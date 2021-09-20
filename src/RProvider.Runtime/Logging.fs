@@ -8,6 +8,8 @@ open RProvider
 
 let private logEnvVar = "RPROVIDER_LOG"
 
+let mutable debugLogs : string list = []
+
 /// The logging is enabled by setting the RPROVIDER_LOG environment variable
 /// Alternatively, just change this constant to 'true' and logs will be 
 /// saved in the default location (see below)
@@ -37,6 +39,7 @@ let private writeString str =
     let pid = Process.GetCurrentProcess().Id
     let tid = System.Threading.Thread.CurrentThread.ManagedThreadId
     let apid = System.AppDomain.CurrentDomain.Id
+    debugLogs <- debugLogs |> List.append [(sprintf "[%s] [Pid:%d, Tid:%d, Apid:%d] %s" (DateTime.Now.ToString("G")) pid tid apid str)]
     writer.WriteLine(sprintf "[%s] [Pid:%d, Tid:%d, Apid:%d] %s" (DateTime.Now.ToString("G")) pid tid apid str)
   with _ -> (*silently ignoring logging errors*) () 
 
