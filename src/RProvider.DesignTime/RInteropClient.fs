@@ -115,8 +115,7 @@ let getServer() =
         s
     | None ->
         Logging.logf "[Make new server]"
-        // TODO Remove RunSynchronously
-        let serverInstance = startNewServerAsync() |> Async.RunSynchronously
+        let serverInstance = Async.RunSynchronously(startNewServerAsync(), timeout = 30000)
         lastServer <- Some serverInstance
         Logging.logf "Got some server"
         serverInstance)

@@ -15,20 +15,27 @@ module internal RTypeBuilder =
     let generateTypes ns asm = withServer <| fun server ->
       [ // Expose all available packages as namespaces
         Logging.logf "generateTypes: getting packages"
+        let getPackages = server.InvokeAsync(fun s -> s.GetPackages()) |> Async.AwaitTask
         let packages = 
           [ yield "base", ns
-            for package in server.InvokeAsync(fun s -> s.GetPackages()) |> Async.AwaitTask |> Async.RunSynchronously do yield package, ns + "." + package ]
+            for package in Async.RunSynchronously(getPackages, timeout = 30000) do yield package, ns + "." + package ]
         for package, pns in packages do
             let pty = ProvidedTypeDefinition(asm, pns, "R", Some(typeof<obj>))    
 
-            pty.AddXmlDocDelayed <| fun () -> withServer <| fun serverDelayed -> serverDelayed.InvokeAsync(fun s -> s.GetPackageDescription package) |> Async.AwaitTask |> Async.RunSynchronously
+            pty.AddXmlDocDelayed <| fun () -> withServer <| fun serverDelayed -> 
+              let getDesc = serverDelayed.InvokeAsync(fun s -> s.GetPackageDescription package) |> Async.AwaitTask
+              Async.RunSynchronously(getDesc, timeout = 30000)
             pty.AddMembersDelayed( fun () -> 
               withServer <| fun serverDelayed ->
-              [ serverDelayed.InvokeAsync(fun s -> s.LoadPackage package) |> Async.AwaitTask |> Async.RunSynchronously
-                let bindings = serverDelayed.InvokeAsync(fun s -> s.GetBindings package) |> Async.AwaitTask |> Async.RunSynchronously
+              [ let loadPackage = serverDelayed.InvokeAsync(fun s -> s.LoadPackage package) |> Async.AwaitTask
+                Async.RunSynchronously(loadPackage, timeout = 30000)
+                let getBindings = serverDelayed.InvokeAsync(fun s -> s.GetBindings package) |> Async.AwaitTask
+                let bindings = Async.RunSynchronously(getBindings, timeout = 30000)
 
                 // We get the function descriptions for R the first time they are needed
-                let titles = lazy Map.ofSeq (withServer (fun s -> s.InvokeAsync(fun s -> s.GetFunctionDescriptions package)) |> Async.AwaitTask |> Async.RunSynchronously)
+                let titles = lazy Map.ofSeq (withServer (fun s -> 
+                  let getDesc = s.InvokeAsync(fun s -> s.GetFunctionDescriptions package) |> Async.AwaitTask
+                  Async.RunSynchronously(getDesc, timeout = 30000)))
 
                 for name, serializedRVal in bindings do
                     let memberName = makeSafeName name
@@ -97,7 +104,7 @@ module internal RTypeBuilder =
           Logging.logf "initAndGenerate: starting"
           let ns = "RProvider"
 
-          match tryGetInitializationError() |> Async.RunSynchronously with // TODO Remove synchronous
+          match Async.RunSynchronously(tryGetInitializationError(), timeout = 30000) with
           | null -> 
               yield! generateTypes ns providerAssembly
           | error ->

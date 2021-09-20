@@ -50,7 +50,8 @@ type public RDataProvider(cfg:TypeProviderConfig) as this =
     resTy.AddMember(ctor)
 
     // For each key in the environment, provide a property..
-    for name, typ in RInteropClient.getServer().InvokeAsync(fun s -> s.GetRDataSymbols(longFileName)) |> Async.AwaitTask |> Async.RunSynchronously do
+    let getSymbols = RInteropClient.getServer().InvokeAsync(fun s -> s.GetRDataSymbols(longFileName)) |> Async.AwaitTask
+    for name, typ in Async.RunSynchronously(getSymbols, timeout = 30000) do
       Logging.logf $"Adding member {name}"
       match typ with 
       | null ->
