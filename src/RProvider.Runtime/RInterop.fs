@@ -379,7 +379,6 @@ module RInterop =
 
     let getPackages() : string[] =
         Logging.logf "Communicating with R to get packages"
-        failwithf "Fail in packages. . Logs are %A" (Logging.debugLogs)
         try
             eval(".packages(all.available=T)").GetValue()
         with
