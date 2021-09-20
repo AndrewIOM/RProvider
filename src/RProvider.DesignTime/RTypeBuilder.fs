@@ -15,7 +15,9 @@ module internal RTypeBuilder =
     let generateTypes ns asm = withServer <| fun server ->
       [ // Expose all available packages as namespaces
         Logging.logf "generateTypes: getting packages"
+        failwithf "Fail C. NS = %s . Logs are %A" ns (Logging.debugLogs)
         let getPackages = server.InvokeAsync(fun s -> s.GetPackages()) |> Async.AwaitTask
+        failwithf "Fail D. NS = %s . Logs are %A" ns (Logging.debugLogs)
         let packages = 
           [ yield "base", ns
             for package in Async.RunSynchronously(getPackages, timeout = 30000) do yield package, ns + "." + package ]
