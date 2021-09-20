@@ -41,10 +41,10 @@ type public RProvider(cfg:TypeProviderConfig) as this =
         Logging.logf "Building types"
         try 
           for ns, types in RTypeBuilder.initAndGenerate(runtimeAssembly) do
-            failwith "Fail B. NS = %s . Logs are %A" ns (Logging.debugLogs)
+            //failwith "Fail B. NS = %s . Logs are %A" ns (Logging.debugLogs)
             this.AddNamespace(ns, types)
           Logging.logf $"RProvider constructor succeeded"
-          failwithf "Fail A. Logs are %A" (Logging.debugLogs)
+          //failwithf "Fail A. Logs are %A" (Logging.debugLogs)
         with e ->
           Logging.logf $"RProvider constructor failed: {e}"
           reraise()

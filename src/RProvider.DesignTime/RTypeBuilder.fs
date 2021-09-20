@@ -17,7 +17,7 @@ module internal RTypeBuilder =
         Logging.logf "generateTypes: getting packages"
         let getPackages = server.InvokeAsync(fun s -> s.GetPackages()) |> Async.AwaitTask
         let packageList = Async.RunSynchronously(getPackages, timeout = 30000)
-        failwithf "Fail After Packages. NS = %s . Logs are %A" ns (Logging.debugLogs)
+        //failwithf "Fail After Packages. NS = %s . Logs are %A" ns (Logging.debugLogs)
         let packages = 
           [ yield "base", ns
             for package in packageList do yield package, ns + "." + package ]
