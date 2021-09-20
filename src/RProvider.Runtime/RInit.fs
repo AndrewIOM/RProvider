@@ -151,7 +151,7 @@ let internal engine = lazy(
             | RInitError err -> 
                 Logging.logf $"engine: Unexpected - error not reported: %s{err}"
                 null
-        failwithf "Engine 1. e = %A . Logs are %A" lib (Logging.debugLogs)
+        //failwithf "Engine 1. e = %A . Logs are %A" lib (Logging.debugLogs)
         let engine = REngine.GetInstance(lib, true, null, characterDevice, AutoPrint=false)
         failwithf "Engine 2. e = %A . Logs are %A" engine (Logging.debugLogs)
         System.AppDomain.CurrentDomain.DomainUnload.Add(fun _ -> engine.Dispose()) 
