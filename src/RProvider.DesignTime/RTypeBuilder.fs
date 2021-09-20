@@ -16,10 +16,11 @@ module internal RTypeBuilder =
       [ // Expose all available packages as namespaces
         Logging.logf "generateTypes: getting packages"
         let getPackages = server.InvokeAsync(fun s -> s.GetPackages()) |> Async.AwaitTask
+        let packageList = Async.RunSynchronously(getPackages, timeout = 30000)
+        failwithf "Fail After Packages. NS = %s . Logs are %A" ns (Logging.debugLogs)
         let packages = 
           [ yield "base", ns
-            for package in Async.RunSynchronously(getPackages, timeout = 30000) do yield package, ns + "." + package ]
-        failwithf "Fail After Packages. NS = %s . Logs are %A" ns (Logging.debugLogs)
+            for package in packageList do yield package, ns + "." + package ]
         for package, pns in packages do
             let pty = ProvidedTypeDefinition(asm, pns, "R", Some(typeof<obj>))    
 
