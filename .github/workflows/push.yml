@@ -2,7 +2,7 @@ name: .NET
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, fix-ubuntu-ci ]
 
 jobs:
   build:
@@ -11,7 +11,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest]
+        os: [macos-latest,ubuntu-latest,windows-latest]
+    env:
+      RPROVIDER_LOG: rlog.txt
 
     steps:
     - uses: actions/checkout@master
@@ -50,6 +52,9 @@ jobs:
       run: dotnet restore RProvider.Tests.sln
     - name: Build
       run: dotnet fake build -t All
+    - name: Check R log
+      if: ${{ always() }}
+      run: cat rlog.txt
     - name: Deploy documentation from master
       uses: peaceiris/actions-gh-pages@v3
       with:
