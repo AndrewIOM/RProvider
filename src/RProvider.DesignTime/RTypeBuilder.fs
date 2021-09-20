@@ -103,11 +103,12 @@ module internal RTypeBuilder =
        [  // Get the assembly and namespace used to house the provided types
           Logging.logf "initAndGenerate: starting"
           let ns = "RProvider"
-          failwith "Fail 2"
           match Async.RunSynchronously(tryGetInitializationError(), timeout = 30000) with
           | null -> 
+              failwith "Fail 3"
               yield! generateTypes ns providerAssembly
           | error ->
+              failwithf "Fail 3: %s" error
               // add an error static property (shown when typing `R.`)
               let pty = ProvidedTypeDefinition(providerAssembly, ns, "R", Some(typeof<obj>))
               let prop = ProvidedProperty("<Error>", typeof<string>, isStatic = true, getterCode = fun _ -> <@@ error @@>)
