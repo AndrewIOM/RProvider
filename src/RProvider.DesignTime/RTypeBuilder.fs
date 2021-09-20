@@ -103,7 +103,7 @@ module internal RTypeBuilder =
        [  // Get the assembly and namespace used to house the provided types
           Logging.logf "initAndGenerate: starting"
           let ns = "RProvider"
-
+          failwith "Fail 2"
           match Async.RunSynchronously(tryGetInitializationError(), timeout = 30000) with
           | null -> 
               yield! generateTypes ns providerAssembly
