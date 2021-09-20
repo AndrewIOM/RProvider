@@ -380,7 +380,9 @@ module RInterop =
     let getPackages() : string[] =
         Logging.logf "Communicating with R to get packages"
         try
-            let x = eval(".packages(all.available=T)")
+            let e = engine.Force()
+            failwithf "Packages. e = %A . Logs are %A" e (Logging.debugLogs)
+            let x =  engine.Value.Evaluate(".packages(all.available=T)")
             failwithf "Packages. NS = %A . Logs are %A" x (Logging.debugLogs)
             eval(".packages(all.available=T)").GetValue()
         with
