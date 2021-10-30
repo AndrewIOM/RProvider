@@ -2,7 +2,7 @@ name: Push to master
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, test-ci-ubuntu ]
 
 jobs:
   build:
@@ -31,6 +31,8 @@ jobs:
     - name: Set R_HOME environment variable
       run:   |
          if [ "$RUNNER_OS" == "Linux" ]; then
+              mkdir ~/.local/lib/R
+              echo "R_LIBS_USER=~/.local/lib/R R" >> "$GITHUB_ENV"
               echo "R_HOME=$(R RHOME)" >> "$GITHUB_ENV"
          elif [ "$RUNNER_OS" == "macOS" ]; then
               echo "R_HOME=$(R RHOME)" >> "$GITHUB_ENV"
@@ -45,6 +47,9 @@ jobs:
       run: |
         Rscript -e 'R.home()'
         echo "${{ env.R_HOME }}"
+    - name: Install R package dependencies
+      run: Rscript -e "install.packages(c('zoo'))"
+      shell: bash
     - name: Setup .NET 
       uses: actions/setup-dotnet@v1
       with:
