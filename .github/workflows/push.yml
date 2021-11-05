@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        os: [ ubuntu-latest ]
     env:
       RPROVIDER_LOG: rlog.txt
 
@@ -51,6 +51,9 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: '5.0.x'
+    - name: Install R package dependencies
+      run: Rscript -e "install.packages(c('zoo'))"
+      shell: bash
     - name: Test F# scripts
       run: dotnet fsi citest.fsx
     - name: Check R log
