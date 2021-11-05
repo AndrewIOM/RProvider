@@ -12,6 +12,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
+    env:
+      RPROVIDER_LOG: rlog.txt
 
     steps:
     - uses: actions/checkout@master
@@ -51,6 +53,9 @@ jobs:
         dotnet-version: '5.0.x'
     - name: Test F# scripts
       run: dotnet fsi citest.fsx
+    - name: Check R log
+      if: ${{ always() }}
+      run: cat rlog.txt
     - name: Setup .NET 6 (for Apple Silicon build)
       uses: actions/setup-dotnet@v1
       with:
