@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Test.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="RProvider" Version="2.0.2" />
+  </ItemGroup>
+</Project>
