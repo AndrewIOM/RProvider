@@ -20,5 +20,7 @@ nuget R.NET.FSharp 1.9.0
 nuget System.ComponentModel.Composition 5.0.0
 nuget System.Reflection.MetadataLoadContext 5.0.0
 
+nuget RProvider 2.0.2
+
 github fsprojects/FSharp.TypeProviders.SDK:f4aca36af04aa84b16ec04df6f6bf55ac2f17a73 src/ProvidedTypes.fsi
 github fsprojects/FSharp.TypeProviders.SDK:f4aca36af04aa84b16ec04df6f6bf55ac2f17a73 src/ProvidedTypes.fs

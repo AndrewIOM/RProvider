@@ -66,6 +66,13 @@ jobs:
       run: dotnet tool restore
     - name: Restore paket dependencies
       run: dotnet paket restore
+    - name: Test paket libraries
+      run:  |
+        dotnet restore test3
+        dotnet build test3
+    - name: Check R log
+      if: ${{ always() }}
+      run: cat rlog.txt
     - name: Restore dependencies
       run: dotnet restore RProvider.sln
     - name: Restore dependencies (tests)
