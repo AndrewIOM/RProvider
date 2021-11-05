@@ -2,7 +2,7 @@ name: Push to master
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, ci-libraries ]
 
 jobs:
   build:
@@ -49,6 +49,8 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: '5.0.x'
+    - name: Test F# scripts
+      run: dotnet fsi citest.fsx
     - name: Setup .NET 6 (for Apple Silicon build)
       uses: actions/setup-dotnet@v1
       with:
