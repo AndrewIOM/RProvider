@@ -12,8 +12,18 @@ type IRInteropServer =
     /// string returns the error. Otherwise, the value is `null`.
     abstract member InitializationErrorMessage: unit -> string
 
-    /// Returns an array with the names of all installed packages (e.g. "base", "graphics" etc.)
+    /// Set an additional 'pathdir' within R to resolve packages
+    abstract member AddPackagePath: string -> unit
+    /// Install an R package from a CRAN mirror using 'install.packages' R function.
+    /// Parameters are (1) package name, (2) version (empty string for latest), and
+    /// (3) repository to use.
+    /// Returns false if the package failed to install correctly.
+    abstract member InstallPackage: (string * string * string)  -> bool
+
+    /// Returns an array with the names of all installed packages (e.g. "base", "graphics" etc.).
     abstract member GetPackages: unit -> string []
+    /// Returns an array of user installed packages only, with their name and version.
+    abstract member GetPackageVersions: unit -> (string * string) []
     /// Loads the package (using R's `require`). This should be called before `GetBindings`.
     abstract member LoadPackage: string -> unit
     /// Returns an array with binding information. The first string is the name of the

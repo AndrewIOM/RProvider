@@ -18,6 +18,7 @@
     <Compile Include="..\Common\AssemblyInfo.fs" />
     <Compile Include="../Common/IRInteropServer.fs" />
     <Compile Include="RInteropClient.fs" />
+    <Compile Include="RConfig.fs" />
     <Compile Include="RTypeBuilder.fs" />
     <Compile Include="RProvider.fs" />
     <Compile Include="RData.fs" />

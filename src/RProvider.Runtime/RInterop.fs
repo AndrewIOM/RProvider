@@ -419,11 +419,23 @@ module RInterop =
             Logging.logf "Ignoring name %s of type %s" name something
             RValue.Value
 
+    let addPackagePath path =
+        exec <| sprintf ".pathdirs(c(%s, .pathdirs))" path
+
+    let installPackage name version repository : bool =
+        sprintf "install.packages('%s', version = '%s', repo = '%s'" name version repository
+        eval(sprintf "").GetValue()
+
     let getPackages () : string [] =
         Logging.logf "Communicating with R to get packages"
         let res = eval(".packages(all.available=T)").GetValue()
         Logging.logf "Result: %O" res
         res
+
+    let getPackageVersions () : (string * string) [] =
+        let installed = eval("as.data.frame(installed.packages()[,c(1,3:4)])").AsList()
+        installed.["Package"].GetValue<string[]>()
+        |> Array.zip (installed.["Version"].GetValue<string[]>())
 
     let getPackageDescription packageName : string =
         eval("packageDescription(\"" + packageName + "\")$Description").GetValue()

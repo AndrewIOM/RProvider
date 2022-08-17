@@ -81,29 +81,34 @@ module internal EventLoop =
 /// Server object that is exposed via remoting and is called by the editor
 /// to get information about R (packages, functions, RData files etc.)
 type RInteropServer() =
-    //inherit MarshalByRefObject()
     interface IRInteropServer with
 
-        member x.InitializationErrorMessage() =
+        member __.InitializationErrorMessage() =
             // No need for event loop here, because this is initialized
             // when the event loop starts (so initResult has value now)
             match RInit.rHomePath.Value with
             | RInit.RInitError error -> error
             | _ -> null
 
-        member x.GetPackages() = EventLoop.runServerCommandSafe getPackages
+        member __.AddPackagePath(path:string) = EventLoop.runServerCommandSafe <| fun () -> addPackagePath path
 
-        member x.LoadPackage(package) = EventLoop.runServerCommandSafe <| fun () -> loadPackage package
+        member __.InstallPackage(args): bool = EventLoop.runServerCommandSafe <| fun () -> installPackage <||| args
 
-        member x.GetBindings(package) = EventLoop.runServerCommandSafe <| fun () -> getBindings package
+        member __.GetPackages() = EventLoop.runServerCommandSafe getPackages
 
-        member x.GetFunctionDescriptions(package: string) =
+        member __.GetPackageVersions(): (string * string)[] = EventLoop.runServerCommandSafe getPackageVersions
+
+        member __.LoadPackage(package) = EventLoop.runServerCommandSafe <| fun () -> loadPackage package
+
+        member __.GetBindings(package) = EventLoop.runServerCommandSafe <| fun () -> getBindings package
+
+        member __.GetFunctionDescriptions(package: string) =
             EventLoop.runServerCommandSafe <| fun () -> getFunctionDescriptions package
 
-        member x.GetPackageDescription(package) =
+        member __.GetPackageDescription(package) =
             EventLoop.runServerCommandSafe <| fun () -> getPackageDescription package
 
-        member x.GetRDataSymbols(file) =
+        member __.GetRDataSymbols(file) =
             EventLoop.runServerCommandSafe
             <| fun () ->
                 let env = REnv(file)

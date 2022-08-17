@@ -40,7 +40,15 @@ type public RProvider(cfg: TypeProviderConfig) as this =
         try
             Logging.logf "Starting build types."
 
-            for ns, types in RTypeBuilder.initAndGenerate (runtimeAssembly) do
+            let localConfig =
+                if File.Exists(Path.Combine(cfg.ResolutionFolder, "r.dependencies"))
+                then 
+                    File.ReadAllLines(Path.Combine(cfg.ResolutionFolder, "r.dependencies"))
+                    |> RConfig.tryParse
+                    |> fun o -> if o.IsNone then ConfigFile.Default else o.Value
+                else ConfigFile.Default
+
+            for ns, types in RTypeBuilder.initAndGenerate runtimeAssembly localConfig |> Async.RunSynchronously do
                 this.AddNamespace(ns, types)
 
             Logging.logf "RProvider constructor succeeded"

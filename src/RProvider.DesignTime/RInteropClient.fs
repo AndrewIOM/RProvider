@@ -136,28 +136,33 @@ let getServer () =
             match lastServer with
             | Some s ->
                 Logging.logf "[Found lastServer]"
-                s
+                async { return s }
             | None ->
                 Logging.logf "[Make new server]"
-                // TODO Remove RunSynchronously
-                let serverInstance = startNewServerAsync () |> Async.RunSynchronously
-                lastServer <- Some serverInstance
-                Logging.logf "Got some server"
-                serverInstance)
+                async { 
+                    let! serverInstance = startNewServerAsync ()
+                    lastServer <- Some serverInstance
+                    Logging.logf "Got some server"
+                    return serverInstance
+                })
 
 /// Returns Some("...") when there is an 'expected' kind of error that we want
 /// to show in the IntelliSense in a pleasant way (R is not installed, registry
 /// key is missing or .rprovider.conf is missing)
 let tryGetInitializationError () =
     try
-        let server = getServer ()
-        Logging.logf "Sending command: get init error message..."
-        server.InvokeAsync(fun s -> s.InitializationErrorMessage()) |> Async.AwaitTask
+        async {
+            let! server = getServer ()
+            Logging.logf "Sending command: get init error message..."
+            return! server.InvokeAsync(fun s -> s.InitializationErrorMessage()) |> Async.AwaitTask
+        }
     with
     | RInitializationException err -> async { return err }
 
 let withServer f =
     lock serverLock
     <| fun () ->
-        let serverInstance = getServer ()
-        f serverInstance
+        async {
+            let! serverInstance = getServer ()
+            return! f serverInstance
+        }

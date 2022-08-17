@@ -57,7 +57,8 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
 
         // For each key in the environment, provide a property..
         for name, typ in
-            RInteropClient.getServer().InvokeAsync(fun s -> s.GetRDataSymbols(longFileName))
+            (RInteropClient.getServer()
+            |> Async.RunSynchronously).InvokeAsync(fun s -> s.GetRDataSymbols(longFileName))
             |> Async.AwaitTask
             |> Async.RunSynchronously do
             Logging.logf "Adding member %s" name
