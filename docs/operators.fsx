@@ -8,6 +8,7 @@ index: 4
 
 (*** condition: prepare ***)
 #nowarn "211"
+#r "../src/RProvider/bin/Release/net5.0/DynamicInterop.dll"
 #r "../src/RProvider/bin/Release/net5.0/RDotNet.dll"
 #r "../src/RProvider/bin/Release/net5.0/RDotNet.FSharp.dll"
 #r "../src/RProvider/bin/Release/net5.0/RProvider.Runtime.dll"
@@ -59,4 +60,4 @@ x.Engine.Evaluate("setClass('testclass', representation(foo='character', bar='in
 
 let test = x.Engine.Evaluate("new('testclass', foo='s4', bar=1:4)")
 
-s4?foo
+test?foo
