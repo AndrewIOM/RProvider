@@ -3,3 +3,4 @@ File:ProvidedTypes.fs
 
 System.Reflection.MetadataLoadContext
 FSharp.Core
+PipeMethodCalls

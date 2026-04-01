@@ -41,8 +41,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{B34F96AE-4
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "RProvider", "src\RProvider\RProvider.fsproj", "{5624F098-BE3F-4C8E-B50F-1CFC9E1E0708}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "RWrapperGenerator", "src\RWrapperGenerator\RWrapperGenerator.fsproj", "{66A390A5-526A-4BD1-B876-E7425B643C70}"
-EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "RProvider.DesignTime", "src\RProvider.DesignTime\RProvider.DesignTime.fsproj", "{00496B70-99EA-4ED2-AFD5-6DB4A1DB7317}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "RProvider.Server", "src\RProvider.Server\RProvider.Server.fsproj", "{7FF9CFA3-2516-4970-9DD8-54C7D4CA24AA}"

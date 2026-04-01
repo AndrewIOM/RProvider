@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
@@ -10,6 +10,7 @@
     <Compile Include="RProviderAttribute.fs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../r-bridge/r-bridge.fsproj" />
     <ProjectReference Include="../RProvider.DesignTime/RProvider.DesignTime.fsproj" PrivateAssets="All" />
     <ProjectReference Include="../RProvider.Runtime/RProvider.Runtime.fsproj" PrivateAssets="All" />
     <ProjectReference Include="../RProvider.Server/RProvider.Server.fsproj" PrivateAssets="All" />
@@ -18,10 +19,7 @@
     <None Include="../../docs/img/logo.png" Pack="true" PackagePath="/">
         <PackageCopyToOutput>true</PackageCopyToOutput>
     </None>
-    <None Include="bin/Release/net5.0/server/**" Pack="true" PackagePath="/lib/net5.0/server/">
-        <PackageCopyToOutput>true</PackageCopyToOutput>
-    </None>
-    <None Include="RProvider.Runtime.dll.config" Pack="true" PackagePath="/lib/net5.0/">
+    <None Include="bin/Release/net10.0/server/**" Pack="true" PackagePath="/lib/net10.0/server/">
         <PackageCopyToOutput>true</PackageCopyToOutput>
     </None>
   </ItemGroup>

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
@@ -10,10 +10,14 @@
     <Compile Include="Logging.fs" />
     <Compile Include="Configuration.fs" />
     <Compile Include="RInit.fs" />
-    <Compile Include="RInterop.fs" />
+    <Compile Include="RTypes.fs" />
+    <Compile Include="SymbolicExpressionExtensions.fs" />
     <Compile Include="Converters.fs" />
+    <Compile Include="RInterop.fs" />
+    <Compile Include="REnv.fs" />
     <Compile Include="Serialisation.fs" />
     <Compile Include="FSIPrinters.fs" />
+    <ProjectReference Include="../../../fsharp-r-bridge/src/r-bridge/RBridge.Extensions/RBridge.Extensions.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

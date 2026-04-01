@@ -6,25 +6,29 @@
       "version": "5.20.4",
       "commands": [
         "fake"
-      ]
+      ],
+      "rollForward": false
     },
     "paket": {
-      "version": "6.0.7",
+      "version": "10.3.1",
       "commands": [
         "paket"
-      ]
+      ],
+      "rollForward": false
     },
     "fsharp.formatting.commandtool": {
       "version": "11.4.4",
       "commands": [
         "fsdocs"
-      ]
+      ],
+      "rollForward": false
     },
     "fantomas-tool": {
       "version": "4.5.7",
       "commands": [
         "fantomas"
-      ]
+      ],
+      "rollForward": false
     }
   }
 }
