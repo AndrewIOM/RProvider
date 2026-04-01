@@ -67,7 +67,7 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
                 // Generate property of type 'SymbolicExpression'
                 ProvidedProperty(
                     name,
-                    typeof<RDotNet.SymbolicExpression>,
+                    typeof<RBridge.SymbolicExpression>,
                     getterCode = fun (Singleton self) -> <@@ ((%%self): REnv).Get(name) @@>
                 )
                 |> resTy.AddMember
@@ -78,7 +78,7 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
                 ProvidedProperty(
                     name,
                     typ,
-                    getterCode = fun (Singleton self) -> Expr.Coerce(<@@ ((%%self): REnv).Get(name).Value @@>, typ)
+                    getterCode = fun (Singleton self) -> Expr.Coerce(<@@ ((%%self): REnv).Get(name).FromR() @@>, typ)
                 )
                 |> resTy.AddMember
 

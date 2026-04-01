@@ -80,7 +80,7 @@ module internal RTypeBuilder =
                                             ProvidedMethod(
                                                 methodName = memberName,
                                                 parameters = paramList,
-                                                returnType = typeof<RDotNet.SymbolicExpression>,
+                                                returnType = typeof<RBridge.SymbolicExpression>,
                                                 isStatic = true,
                                                 invokeCode =
                                                     fun args ->
@@ -133,7 +133,7 @@ module internal RTypeBuilder =
                                                           "paramsByName",
                                                           t
                                                       ) ],
-                                                returnType = typeof<RDotNet.SymbolicExpression>,
+                                                returnType = typeof<RBridge.SymbolicExpression>,
                                                 isStatic = true,
                                                 invokeCode =
                                                     fun args ->
@@ -169,7 +169,7 @@ module internal RTypeBuilder =
                                         yield
                                             ProvidedProperty(
                                                 propertyName = memberName,
-                                                propertyType = typeof<RDotNet.SymbolicExpression>,
+                                                propertyType = typeof<RBridge.SymbolicExpression>,
                                                 isStatic = true,
                                                 getterCode =
                                                     fun _ -> <@@ RInterop.call package name serializedRVal [||] [||] @@>

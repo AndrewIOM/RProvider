@@ -1,6 +1,6 @@
 namespace RProvider
 
-open RDotNet
+open RBridge
 
 /// Print functions that may be used in
 /// F# interactive to 'pretty-print' R types to the

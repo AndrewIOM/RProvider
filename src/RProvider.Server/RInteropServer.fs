@@ -2,7 +2,6 @@
 
 open Microsoft.FSharp.Core.CompilerServices
 open Microsoft.Win32
-open RDotNet
 open RProvider
 open RProvider.RInterop
 open RProvider.Internal
@@ -28,7 +27,7 @@ module internal EventLoop =
         Logging.logf "server event loop: starting"
 
         try
-            let initResultValue = RInit.rHomePath.Force()
+            let initResultValue = RInit.Singletons.rLocation.Force()
             let mutable running = true
 
             while running do
@@ -81,15 +80,14 @@ module internal EventLoop =
 /// Server object that is exposed via remoting and is called by the editor
 /// to get information about R (packages, functions, RData files etc.)
 type RInteropServer() =
-    //inherit MarshalByRefObject()
     interface IRInteropServer with
 
         member x.InitializationErrorMessage() =
             // No need for event loop here, because this is initialized
             // when the event loop starts (so initResult has value now)
-            match RInit.rHomePath.Value with
-            | RInit.RInitError error -> error
-            | _ -> null
+            match RInit.Singletons.rLocation.Value with
+            | None -> "Error: could not locate an R install"
+            | Some _ -> null
 
         member x.GetPackages() = EventLoop.runServerCommandSafe getPackages
 
@@ -111,11 +109,11 @@ type RInteropServer() =
                 [| for k in env.Keys ->
                        Logging.logf "GetRDataSymbols: key={%O}" k
                        let v = env.Get(k)
-                       Logging.logf "GetRDataSymbols: value=%O" v.Value
+                       Logging.logf "GetRDataSymbols: value=%O" (v.FromR())
 
                        let typ =
                            try
-                               v.Value.GetType()
+                               v.FromR().GetType()
                            with
                            | _ -> null
 
