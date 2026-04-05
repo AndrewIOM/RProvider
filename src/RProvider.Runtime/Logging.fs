@@ -49,9 +49,10 @@ let logf fmt =
     let f = if loggingEnabled then writeString else ignore
     Printf.kprintf f fmt
 
-/// Run the specified function and log potential expceptions, as well
-/// as the output written to console (unless characterDevice.IsCapturing)
-let internal logWithOutput (characterDevice: CharacterDeviceInterceptor) f =
+/// Run the specified function and log potential exceptions, as well
+/// as the output written to console (unless characterDevice.IsCapturing).
+/// TODO Doesn't work in new refactor; requires reworking.
+let internal logWithOutput (characterDevice: Devices.Intercept.Intercepted) f =
     if loggingEnabled then
         try
             // If the device is capturing stuff for someone else, then
@@ -59,10 +60,12 @@ let internal logWithOutput (characterDevice: CharacterDeviceInterceptor) f =
             let capturing = characterDevice.IsCapturing
 
             try
-                if not capturing then characterDevice.BeginCapture()
-                f ()
+                if not capturing then
+                    let dev = Devices.Intercept.beginCapture characterDevice
+                    f ()
+                else f ()
             finally
-                let out = if not capturing then characterDevice.EndCapture() else "(could not be captured)"
+                let out = if not capturing then Devices.Intercept.endCapture characterDevice |> fst else "(could not be captured)"
                 logf "Output: %s" out
         with
         | e ->

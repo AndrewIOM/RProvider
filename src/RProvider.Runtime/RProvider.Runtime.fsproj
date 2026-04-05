@@ -10,9 +10,11 @@
     <Compile Include="Logging.fs" />
     <Compile Include="Configuration.fs" />
     <Compile Include="RInit.fs" />
+    <Compile Include="Serialise.fs" />
+    <Compile Include="Evaluate.fs" />
     <Compile Include="RTypes.fs" />
-    <Compile Include="SymbolicExpressionExtensions.fs" />
     <Compile Include="Converters.fs" />
+    <Compile Include="SymbolicExpressionExtensions.fs" />
     <Compile Include="RInterop.fs" />
     <Compile Include="REnv.fs" />
     <Compile Include="Serialisation.fs" />

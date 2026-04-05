@@ -48,11 +48,21 @@ module SymbolicExpression =
     /// Pass a value from R memory space into .NET, represented
     /// as a .NET primitive or the closest approximation of the
     /// relevant R primitive.
-    let getValue<'a> sexp =
-        Converters.Convert.fromR<'a> Singletons.engine.Value sexp
+    let tryGetValue<'a> sexp =
+        Converters.Convert.tryFromRStructural<'a> Singletons.engine.Value sexp
 
-    let getValueObj sexp =
-        Converters.Convert.fromR<obj> Singletons.engine.Value sexp
+    let getValue<'a> sexp =
+        match tryGetValue<'a> sexp with
+        | Some r -> r
+        | None -> failwithf "Could not convert R expression to .NET type %s." typeof<'a>.Name
+
+    let tryGetTyped sexp =
+        Converters.Convert.tryAsRTyped Singletons.engine.Value sexp
+
+    let getTyped sexp =
+        match tryGetTyped sexp with
+        | Some r -> r
+        | None -> failwith "Could not convert R expression to a semantic type."
 
     let listItem name sexp =
         SymbolicExpression.getListItemByName Singletons.engine.Value name sexp
@@ -84,14 +94,28 @@ module SymbolicExpressionExtensions =
     type SymbolicExpression with
         
         member this.Class: string [] = SymbolicExpression.rClass this
+        
+        member this.TryFromR<'a> () = SymbolicExpression.tryGetValue<'a> this
+
+        /// Extract the value from R memory space into .NET, with
+        /// type 'a.
         member this.FromR<'a> () = SymbolicExpression.getValue<'a> this
-        member this.FromR () = SymbolicExpression.getValueObj this
 
         /// Get the member symbolic expression of given name.
         member this.Member(name: string) = SymbolicExpression.getMember name this
 
         /// Get the value from the typed vector by name.
         member this.ValueOf<'a> (name: string) : 'a = SymbolicExpression.typedVectorByName name this
+
+        /// Represents the R value in an appropriate semantic
+        /// R type for further data exploration and analysis, without
+        /// extraction from R memory.
+        member this.TryAsRTyped = SymbolicExpression.tryGetTyped this
+        member this.AsTyped = SymbolicExpression.getTyped this
+        member this.AsDataFrame = Runtime.RTypes.DataFrame.tryAsFrame this
+        member this.AsVector = Runtime.RTypes.Vector.tryCreate this
+        member this.AsScalar = Runtime.RTypes.Scalar.tryNumeric this
+        member this.AsFactor = Runtime.RTypes.Factor.tryFromExpr this
 
         /// Get the value from an indexed vector by index.
         member this.ValueAt<'a>(index: int) : 'a = SymbolicExpression.typedVectorByIndex index this
@@ -128,77 +152,11 @@ module Operators =
     let (=>) (key:string) (value:'a) = (key, box value)
 
 
-/// Serialisation of R values and functions to and from strings,
-/// for use in communication between the type provider and the server.
-module internal Serialise =
-
-    type RParameter = string
-    type HasVarArgs = bool
-
-    type RValue =
-        | Function of RParameter list * HasVarArgs
-        | Value
-
-    /// Turn an `RValue` (which captures type information of a value or function)
-    /// into a serialized string that can be spliced in a quotation
-    let serializeRValue =
-        function
-        | RValue.Value -> ""
-        | RValue.Function (pars, hasVar) ->
-            let prefix = if hasVar then "1" else "0"
-            prefix + if List.isEmpty pars then "" else ";" + (String.concat ";" pars)
-
-    /// Given a string produced by `serializeRValue`, reconstruct the original RValue object
-    let deserializeRValue serialized =
-        if isNull serialized then
-            invalidArg "serialized" "Unexpected null string"
-        elif serialized = "" then
-            RValue.Value
-        else
-            let hasVar =
-                match serialized.[0] with
-                | '1' -> true
-                | '0' -> false
-                | _ -> invalidArg "serialized" "Should start with a flag"
-
-            let args = if serialized.Length = 1 then [] else List.ofSeq (serialized.Substring(2).Split(';'))
-            RValue.Function(args, hasVar)
-
-
 /// [omit]
 module RInterop =
 
     open Serialise
-
-    /// Determines symbol names to apply for new bindings
-    /// in R, and handles execution using the RProvider singletons.
-    module internal Evaluate =
-
-        let eval (env: REnvironment.REnvironment) (expr: string) =
-            Logging.logWithOutput
-                Singletons.characterDevice
-                (fun () ->
-                    Logging.logf "eval(%s)" expr
-                    Evaluate.eval expr env Singletons.engine.Value)
-
-        /// Evaluate an expression, setting the result as the specified symbol name.
-        let evalTo env (expr: string) (symbol: string) device engine =
-            Logging.logWithOutput
-                Singletons.characterDevice
-                (fun () ->
-                    Logging.logf "evalto(%s, %s)" expr symbol
-                    Symbol.setSymbol symbol (Evaluate.eval expr env engine)
-                )
-
-        let exec (env:REnvironment.REnvironment) (expr: string) : unit =
-            Logging.logWithOutput
-                Singletons.characterDevice
-                (fun () ->
-                    Logging.logf "exec(%s)" expr
-                    // TODO below used use instead of let. IDisposable?
-                    let res = eval env expr
-                    ())
-
+    open RProvider.Runtime
 
     let makeSafeName (name: string) = name.Replace("_", "__").Replace(".", "_")
 
@@ -294,22 +252,7 @@ module RInterop =
         (varArgs: obj [])
         : SymbolicExpression =
 
-        let namedArgs =
-            argsByName
-            |> Seq.map (fun kvp -> kvp.Key, Converters.Convert.toR Singletons.engine.Value kvp.Value)
-            |> Seq.toList
-
-        let unnamedArgsOrdered =
-            if isNull varArgs then
-                []
-            else
-                varArgs
-                |> Array.toList
-                |> List.map (fun v -> "", Converters.Convert.toR Singletons.engine.Value v)
-
-        let allArgs = namedArgs @ unnamedArgsOrdered
-        let argsPairlist = PairList.build Singletons.engine.Value allArgs
-        Evaluate.call rEnv fn argsPairlist Singletons.engine.Value
+        Call.callFunc Converters.Convert.toR rEnv fn argsByName varArgs
 
     /// Call an R function by name given a function name.
     let callFuncByName
@@ -319,14 +262,8 @@ module RInterop =
         (namedArgs: seq<KeyValuePair<string,obj>>)
         (varArgs: obj array)
         : SymbolicExpression =
-
-        let nsEnv = REnvironment.ofNamespace Singletons.engine.Value packageName
-        let fn =
-            REnvironment.tryGetValue Singletons.engine.Value nsEnv funcName
-            |> Option.defaultWith (fun () ->
-                failwithf "Function %s not found in namespace %s" funcName packageName)
-
-        callFunc rEnv fn namedArgs varArgs
+        
+        Call.callFuncByName Converters.Convert.toR rEnv packageName funcName namedArgs varArgs
 
     /// Call an R function given arguments, using serialised values (i.e.
     /// from the type provider itself over a socket).
@@ -339,23 +276,7 @@ module RInterop =
         (varArgs: obj [])
         : SymbolicExpression =
 
-        match Serialise.deserializeRValue serializedRVal with
-        | RValue.Function (paramsR, hasVarArg) ->
-
-            if namedArgs.Length <> paramsR.Length then
-                failwithf "Function %s expects %d named arguments and you supplied %d" funcName paramsR.Length namedArgs.Length
-
-            let argsByName =
-                Seq.zip paramsR namedArgs
-                |> Seq.map (fun (n, v) -> KeyValuePair(n, v))
-
-            let gEnv = REnvironment.globalEnv Singletons.engine.Value
-            callFuncByName gEnv packageName funcName argsByName varArgs
-
-        | RValue.Value ->
-            let nsEnv = REnvironment.ofNamespace Singletons.engine.Value packageName
-            REnvironment.tryGetValue Singletons.engine.Value nsEnv funcName
-            |> Option.defaultWith (fun () -> failwithf "Value %s not found" funcName)
+        Call.call Converters.Convert.toR packageName funcName serializedRVal namedArgs varArgs
 
 
 

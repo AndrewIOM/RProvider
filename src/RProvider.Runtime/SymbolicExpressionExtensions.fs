@@ -58,7 +58,7 @@ module SymbolicExpression =
     let column (name:string) (expr:SymbolicExpression) : SymbolicExpression =
         match expr with
         | DataFrame Singletons.engine.Value df ->
-            Runtime.RTypes.DataFrame.tryAsFrame df Singletons.engine.Value
+            Runtime.RTypes.DataFrame.tryAsFrame df
             |> Option.defaultWith (fun _ -> failwith "The expression was not a valid R data frame")
             |> Runtime.RTypes.DataFrame.getColumn name Singletons.engine.Value
         | _ -> invalidOp "The expression is not an R data frame."
