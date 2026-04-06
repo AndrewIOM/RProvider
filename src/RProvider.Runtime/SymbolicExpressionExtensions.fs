@@ -4,9 +4,11 @@ open RBridge
 open RProvider.Internal.RInit
 open RBridge.Extensions
 open RBridge.Extensions.ActivePatterns
+open RProvider.Internal.Converters
 
-/// Contains functions to make working with SymbolicExpression
-/// more idiomatic.
+/// Adds functions to the Symbolic Expression module,
+/// which cover semantic operations and have the R engine
+/// singleton injected in.
 [<RequireQualifiedAccess>]
 module SymbolicExpression =
 
@@ -62,3 +64,102 @@ module SymbolicExpression =
             |> Option.defaultWith (fun _ -> failwith "The expression was not a valid R data frame")
             |> Runtime.RTypes.DataFrame.getColumn name Singletons.engine.Value
         | _ -> invalidOp "The expression is not an R data frame."
+
+    /// Get the R classes associated with an R expression.
+    let rClass sexp =
+        match SymbolicExpression.tryGetAttribute sexp "class" Singletons.engine.Value with
+        | None -> [||]
+        | Some attrs ->
+            match attrs with
+            | CharacterVector Singletons.engine.Value v -> v |> Extract.extractStringArray Singletons.engine.Value
+            | _ -> [||]
+
+    /// Pass a value from R memory space into .NET, represented
+    /// as a .NET primitive or the closest approximation of the
+    /// relevant R primitive.
+    let tryGetValue<'a> sexp =
+        Convert.tryFromRStructural<'a> Singletons.engine.Value sexp
+
+    let getValue<'a> sexp =
+        match tryGetValue<'a> sexp with
+        | Some r -> r
+        | None -> failwithf "Could not convert R expression to .NET type %s." typeof<'a>.Name
+
+    let tryGetTyped sexp =
+        Convert.tryAsRTyped Singletons.engine.Value sexp
+
+    let getTyped sexp =
+        match tryGetTyped sexp with
+        | Some r -> r
+        | None -> failwith "Could not convert R expression to a semantic type."
+
+    let listItem name sexp =
+        SymbolicExpression.getListItemByName Singletons.engine.Value name sexp
+
+    let getMember name sexp =
+        match sexp with
+        | S4Object Singletons.engine.Value s4 ->
+            match SymbolicExpression.tryGetAttribute sexp name Singletons.engine.Value with
+            | Some e -> e
+            | None -> failwithf "Member not defined: %s" name
+        | List Singletons.engine.Value l -> listItem name l
+        | _ -> invalidOp "Unsupported operation on R object"
+
+    let typedVectorByName (name:string) sexp =
+        match Runtime.RTypes.GenericVector.tryCreate sexp with
+        | Some v ->
+            match v with
+            | Runtime.RTypes.RVector.NumericV v -> v.[name] |> Runtime.RTypes.NumericS
+            | _ -> failwith "not implemented"
+        | None -> invalidOp "Expression was not a vector"
+
+    let typedVectorByIndex (index:int) sexp =
+        match Runtime.RTypes.GenericVector.tryCreate sexp with
+        | Some v ->
+            match v with
+            | Runtime.RTypes.RVector.NumericV v -> v.[index] |> Runtime.RTypes.NumericS
+            | _ -> failwith "not implemented"
+        | None -> invalidOp "Expression was not a vector"
+
+
+/// [omit]
+[<AutoOpen>]
+module SymbolicExpressionExtensions =
+    
+    type SymbolicExpression with
+        
+        member this.Class: string [] = SymbolicExpression.rClass this
+        
+        member this.TryFromR<'a> () = SymbolicExpression.tryGetValue<'a> this
+
+        /// Extract the value from R memory space into .NET, with
+        /// type 'a.
+        member this.FromR<'a> () = SymbolicExpression.getValue<'a> this
+
+        /// Get the member symbolic expression of given name.
+        member this.Member(name: string) = SymbolicExpression.getMember name this
+
+        /// Get the value from the typed vector by name.
+        member this.ValueOf (name: string) : Runtime.RTypes.RScalar<'u> = SymbolicExpression.typedVectorByName name this
+
+        /// Represents the R value in an appropriate semantic
+        /// R type for further data exploration and analysis, without
+        /// extraction from R memory.
+        member this.TryAsRTyped = SymbolicExpression.tryGetTyped this
+        member this.AsTyped = SymbolicExpression.getTyped this
+        member this.AsDataFrame = Runtime.RTypes.DataFrame.tryAsFrame this
+        member this.AsVector = Runtime.RTypes.GenericVector.tryCreate this
+        member this.AsScalar = Runtime.RTypes.GenericScalar.tryCreate this
+        member this.AsFactor = Runtime.RTypes.Factor.tryFromExpr this
+
+        /// Get the value from an indexed vector by index.
+        member this.ValueAt(index: int) : Runtime.RTypes.RScalar<'u> = SymbolicExpression.typedVectorByIndex index this
+
+        /// Get the first value of a vector.
+        member this.First<'a>() = this.ValueAt<'a>(0)
+
+        /// Try and get the first value of a vector, returning
+        /// `None` if the `SymbolicExpression` is not a vector
+        /// or an empty vector.
+        member this.TryFirst<'a>() = if RBridge.SymbolicExpression.isVector Singletons.engine.Value this then this.ValueAt<'a>(0) |> Some else None
+

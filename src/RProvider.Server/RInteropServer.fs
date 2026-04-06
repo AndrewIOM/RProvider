@@ -1,7 +1,5 @@
 ﻿namespace RProvider.Server
 
-open Microsoft.FSharp.Core.CompilerServices
-open Microsoft.Win32
 open RProvider
 open RProvider.RInterop
 open RProvider.Internal
@@ -58,11 +56,11 @@ module internal EventLoop =
 
                     try
                         try
-                            result := Choice2Of3(f ())
+                            result.Value <- Choice2Of3(f ())
                         with
                         | ex ->
                             let ex = if ex.GetType().IsSerializable then ex else Exception(ex.Message)
-                            result := Choice3Of3(ex)
+                            result.Value <- Choice3Of3(ex)
                     finally
                         evt.Set() |> ignore)
         )
@@ -89,19 +87,19 @@ type RInteropServer() =
             | None -> "Error: could not locate an R install"
             | Some _ -> null
 
-        member x.GetPackages() = EventLoop.runServerCommandSafe getPackages
+        member __.GetPackages() = EventLoop.runServerCommandSafe getPackages
 
-        member x.LoadPackage(package) = EventLoop.runServerCommandSafe <| fun () -> loadPackage package
+        member __.LoadPackage(package) = EventLoop.runServerCommandSafe <| fun () -> loadPackage package
 
-        member x.GetBindings(package) = EventLoop.runServerCommandSafe <| fun () -> getBindings package
+        member __.GetBindings(package) = EventLoop.runServerCommandSafe <| fun () -> getBindings package
 
-        member x.GetFunctionDescriptions(package: string) =
+        member __.GetFunctionDescriptions(package: string) =
             EventLoop.runServerCommandSafe <| fun () -> getFunctionDescriptions package
 
-        member x.GetPackageDescription(package) =
+        member __.GetPackageDescription(package) =
             EventLoop.runServerCommandSafe <| fun () -> getPackageDescription package
 
-        member x.GetRDataSymbols(file) =
+        member __.GetRDataSymbols(file) =
             EventLoop.runServerCommandSafe
             <| fun () ->
                 let env = REnv(file)

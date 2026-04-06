@@ -2,7 +2,7 @@ namespace RProvider
 
 /// Serialisation of R values and functions to and from strings,
 /// for use in communication between the type provider and the server.
-module internal Serialise =
+module Serialise =
 
     type RParameter = string
     type HasVarArgs = bool

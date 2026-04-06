@@ -105,7 +105,7 @@ module Convert =
     /// without the need for a plugin converter system.
     /// Conversion between basic numeric types and containers (e.g.
     /// data frame) should be done using explicit conversion functions.
-    let tryAsRTyped engine sexp : RProvider.Runtime.RTypes.RSemantic option =
+    let tryAsRTyped engine sexp : RProvider.Runtime.RTypes.RSemantic<'u> option =
 
         match sexp with
         | Factor engine f -> Factor.tryFromExpr f |> Option.map FactorInR
@@ -117,8 +117,7 @@ module Convert =
         | LogicalVector engine s
         | CharacterVector engine s
         | RawVector engine s ->
-            Vector.tryCreate s
-            |> Result.toOption
+            GenericVector.tryCreate s
             |> Option.map VectorInR
 
         // TODO Assess if full types are covered, e.g. Matrix?
@@ -148,15 +147,13 @@ module Convert =
         // Pass-through of values already in R:
         | :? SymbolicExpression as s -> s
         | :? Factor.RFactor as f -> f.Sexp
-        | :? Vector.RVector as v ->
-            match v with
-            | Vector.CharacterV v -> v.Sexp
-            | Vector.ComplexV v -> v.Sexp
-            | Vector.IntegerV v -> v.Sexp
-            | Vector.LogicalV v -> v.Sexp
-            | Vector.NumericV v -> v.Sexp
-            | Vector.RawV v -> v.Sexp
-        | :? Scalar.RNumericScalar as (s: Scalar.RNumericScalar) -> s.RExpr
+        | :? Real.Vector.RRealVector<_> as v -> v.Inner.Sexp
+        // | :? RVector.ComplexV v -> v.Inner.Sexp
+        // | :? RVector.IntegerV v -> v.Inner.Sexp
+        // | :? RVector.LogicalV v -> v.Inner.Sexp
+        // | :? RVector.NumericV v -> v.Inner.Sexp
+        // | :? RVector.RawV v -> v.Inner.Sexp
+        | :? Real.Scalar.RRealScalar<_> as s -> s.RExpr
         | :? DataFrame.RFrame as df -> df.RExp
 
         | _ ->
@@ -271,7 +268,7 @@ module Convert =
 
 //     //     match sexp with
 //     //     | CharacterVector engine v -> wrap <| v
-//     //     // | ComplexVector (v) -> wrap <| v.ToArray()
+//     //     // | ComplexVector (v) -> wrap <| v.InnerToArray()
 //     //     // | IntegerVector (v) -> wrap <| v.ToArray()
 //     //     // | LogicalVector (v) -> wrap <| v.ToArray()
 //     //     // | NumericVector (v) ->

@@ -5,6 +5,7 @@ open System.Reflection
 open ProviderImplementation.ProvidedTypes
 open RProvider
 open RProvider.Internal
+open RProvider.Serialise
 open RInterop
 open RInteropClient
 open PipeMethodCalls
@@ -59,7 +60,7 @@ module internal RTypeBuilder =
                                 for name, serializedRVal in bindings do
                                     let memberName = makeSafeName name
 
-                                    match RInterop.deserializeRValue serializedRVal with
+                                    match deserializeRValue serializedRVal with
                                     | RValue.Function (paramList, hasVarArgs) ->
                                         let paramList =
                                             [ for p in paramList ->
@@ -125,6 +126,8 @@ module internal RTypeBuilder =
 
                                         yield pm :> MemberInfo
 
+                                        let globEnv = globalEnvironment()
+
                                         let byName t q =
                                             ProvidedMethod(
                                                 methodName = memberName,
@@ -149,7 +152,7 @@ module internal RTypeBuilder =
                                             byName (typeof<IDictionary<string, obj>>) (fun argsByName -> 
                                                 <@@ let vals: IDictionary<string, obj> = %%argsByName
                                                     let valSeq = vals :> seq<KeyValuePair<string, obj>>
-                                                    RInterop.callFunc package name valSeq null @@> )
+                                                    RInterop.callFuncByName globEnv package name valSeq null @@> )
 
                                         yield pdm :> MemberInfo
 
@@ -161,7 +164,7 @@ module internal RTypeBuilder =
                                                     if duplicates |> List.isEmpty |> not then failwithf "Recieved duplicate arguments: %A" (duplicates |> List.map fst)
                                                     let vals: (string * obj) list = %%argsByName
                                                     let valSeq = vals |> Seq.map KeyValuePair
-                                                    RInterop.callFunc package name valSeq null @@> )
+                                                    RInterop.callFuncByName globEnv package name valSeq null @@> )
                                                     
                                         yield plm :> MemberInfo
 

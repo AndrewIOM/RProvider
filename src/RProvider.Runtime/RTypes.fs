@@ -25,78 +25,11 @@ module RTypes =
             let sexp = Call.callFuncByName passThrough rEnv "base" fn Seq.empty [| a; b |]
             tryMake sexp |> Option.get
 
+    /// A base 
+    module VectorBase =
 
-    /// A zero-copy representation of a scalar value in R.
-    module Scalar =
-
-        /// A scalar value currently residing in R's memory space.
-        type RNumericScalar = private { Sexp : SymbolicExpression }
-
-        let tryNumeric (sexp: SymbolicExpression) =
-            match SymbolicExpression.getType Singletons.engine.Value sexp with
-            | SymbolicExpression.RealVector
-            | SymbolicExpression.IntegerVector ->
-                if SymbolicExpression.length Singletons.engine.Value sexp = 1 then
-                    Some { Sexp = sexp }
-                else None
-            | _ -> None
-
-        /// Enforces that a scalar is a vector of a single element,
-        /// to be used before any operation.
-        let internal enforceShape (num:RNumericScalar) =
-            if SymbolicExpression.length Singletons.engine.Value num.Sexp = 1
-            then num
-            else failwith "A scalar R value was mutated and is no longer scalar."
-
-        let extractScalarFloat (scalar: RNumericScalar) =
-            enforceShape scalar
-            |> fun s -> s.Sexp
-            |> Extract.extractFloatArray Singletons.engine.Value
-            |> Array.head
-
-        let fromFloat (value: float) =
-            Create.realVector Singletons.engine.Value [| value |]
-            |> tryNumeric
-
-        type RNumericScalar with
-            static member Add a b = R.baseOp2 "+" a.Sexp b.Sexp
-            static member Sub a b = R.baseOp2 "-" a.Sexp b.Sexp
-            static member Mul a b = R.baseOp2 "*" a.Sexp b.Sexp
-            static member Div a b = R.baseOp2 "/" a.Sexp b.Sexp
-            static member Log a = R.baseOp "log" a.Sexp
-            static member Exp a = R.baseOp "exp" a.Sexp
-            static member Scale a s = R.baseOp2 "*" a.Sexp s.Sexp
-            static member ToFloat a = extractScalarFloat a
-            static member FromFloat f = fromFloat f
-            member this.RExpr = this.Sexp
-
-            static member (+) (a,b) = RNumericScalar.Add a b
-            static member (-) (a,b) = RNumericScalar.Sub a b
-            static member (*) (a,b) = RNumericScalar.Mul a b
-            static member (/) (a,b) = RNumericScalar.Div a b
-
-
-    module Vector =
-
-        type RVectorInner<'T> = { Sexp : SymbolicExpression }
-
-        type RVector =
-            | NumericV of RVectorInner<float>
-            | IntegerV of RVectorInner<int>
-            | LogicalV of RVectorInner<bool>
-            | CharacterV of RVectorInner<string>
-            | ComplexV of RVectorInner<Extensions.RComplex>
-            | RawV of RVectorInner<byte>
-        
+        type RVectorBase<'T> = { Sexp : SymbolicExpression }
         with
-            member internal this.Sexp =
-                match this with
-                | NumericV inn -> inn.Sexp
-                | IntegerV inn -> inn.Sexp
-                | LogicalV inn -> inn.Sexp
-                | CharacterV inn -> inn.Sexp
-                | ComplexV inn -> inn.Sexp
-                | RawV inn -> inn.Sexp
 
             /// If a vector is a named vector, returns a list of the names
             /// associated with the vector. Otherwise, returns a blank array.
@@ -105,27 +38,81 @@ module RTypes =
                 |> Option.defaultValue [||]
 
             /// Get a scalar item by R index (1..n based, not zero based).
-            member this.Item(i:int) : 'T =
+            member this.Item(i:int, mk) : 'T =
                 let idxSexp = Create.intVector Singletons.engine.Value [| i + 1 |]
-                let elem mk = R.baseOp2 "[[" this.Sexp idxSexp mk
-                match this with
-                | NumericV _ -> elem Scalar.tryNumeric
-                | CharacterV _ -> failwith "not finished"
+                R.baseOp2 "[[" this.Sexp idxSexp mk
 
             /// If a vector is named, get the named item from the vector.
-            member this.Item(name : string) : 'T =
+            member this.Item(name : string, mk) : 'T =
                 let idx = this.Names |> Array.findIndex ((=) name)
-                this.[idx]
+                this.[idx, mk]
 
-        let tryCreate sexp =
-            match sexp with
-            | ActivePatterns.RealVector Singletons.engine.Value s -> NumericV { Sexp = s } |> Ok
-            | ActivePatterns.ComplexVector Singletons.engine.Value s -> ComplexV { Sexp = s } |> Ok
-            | ActivePatterns.IntegerVector Singletons.engine.Value s -> IntegerV { Sexp = s } |> Ok
-            | ActivePatterns.LogicalVector Singletons.engine.Value s -> LogicalV { Sexp = s } |> Ok
-            | ActivePatterns.CharacterVector Singletons.engine.Value s -> CharacterV { Sexp = s } |> Ok
-            | ActivePatterns.RawVector Singletons.engine.Value s -> RawV { Sexp = s } |> Ok
-            | _ -> Error "Could not make vector. R expression was not a vector."
+    /// Types for expressing floating point numbers that are within
+    /// an R environment. Operations are zero-copy within R.
+    module Real =
+
+        module Scalar =
+
+            /// A scalar value currently residing in R's memory space.
+            type RRealScalar<[<Measure>] 'u> = private { Sexp : SymbolicExpression }
+
+            let tryFromExpression (sexp: SymbolicExpression) =
+                match SymbolicExpression.getType Singletons.engine.Value sexp with
+                | SymbolicExpression.RealVector ->
+                    if SymbolicExpression.length Singletons.engine.Value sexp = 1 then
+                        Some { Sexp = sexp }
+                    else None
+                | _ -> None
+
+            /// Enforces that a scalar is a vector of a single element,
+            /// to be used before any operation.
+            let internal enforceShape (num:RRealScalar<'u>) =
+                if SymbolicExpression.length Singletons.engine.Value num.Sexp = 1
+                then num
+                else failwith "A scalar R value was mutated and is no longer scalar."
+
+            let extractScalarFloat (scalar: RRealScalar<'u>) =
+                enforceShape scalar
+                |> fun s -> s.Sexp
+                |> Extract.extractFloatArray Singletons.engine.Value
+                |> Array.head
+                |> (*) (LanguagePrimitives.FloatWithMeasure<'u> 1.)
+
+            let fromFloat (value: float<'u>) : RRealScalar<'u> option =
+                Create.realVector Singletons.engine.Value [| value |]
+                |> tryFromExpression
+
+            type RRealScalar<'u> with
+                static member Add (a: RRealScalar<'u>) (b: RRealScalar<'u>) : RRealScalar<'u> = R.baseOp2 "+" a.Sexp b.Sexp tryFromExpression
+                static member Sub (a: RRealScalar<'u>) (b: RRealScalar<'u>) : RRealScalar<'u> = R.baseOp2 "-" a.Sexp b.Sexp tryFromExpression
+                static member Mul (a: RRealScalar<'u>) (b: RRealScalar<'v>) : RRealScalar<'u 'v> = R.baseOp2 "*" a.Sexp b.Sexp tryFromExpression
+                static member Div (a: RRealScalar<'u>) (b: RRealScalar<'v>) : RRealScalar<'u/'v> = R.baseOp2 "/" a.Sexp b.Sexp tryFromExpression
+                static member Log a = R.baseOp "log" a.Sexp tryFromExpression
+                static member Exp a = R.baseOp "exp" a.Sexp tryFromExpression
+                static member Scale (a: RRealScalar<'u>) (s: RRealScalar<1>) : RRealScalar<'u> = R.baseOp2 "*" a.Sexp s.Sexp tryFromExpression
+                static member ToFloat a = extractScalarFloat a
+                static member FromFloat f = fromFloat f
+                member this.RExpr = this.Sexp
+
+                static member (+) (a,b) = RRealScalar.Add a b
+                static member (-) (a,b) = RRealScalar.Sub a b
+                static member (*) (a,b) = RRealScalar.Mul a b
+                static member (/) (a,b) = RRealScalar.Div a b
+
+
+        module Vector =
+
+            type RRealVector<[<Measure>] 'u> = { Inner: VectorBase.RVectorBase<Scalar.RRealScalar<'u>> }
+
+            let tryCreate sexp =
+                { Inner = { Sexp = sexp } } |> Some
+            
+            type RRealVector<'u> with
+                static member Add (a: RRealVector<'u>) (b: RRealVector<'u>) : RRealVector<'u> = R.baseOp2 "+" a.Inner.Sexp b.Inner.Sexp tryCreate
+                static member Mean(a: RRealVector<'u>) = R.baseOp "mean" a.Inner.Sexp Scalar.tryFromExpression
+                static member (+) (a,b) = RRealVector.Add a b
+                member this.Item(i: int) = this.Inner.[i, Scalar.tryFromExpression]
+                member this.Item(name: string) = this.Inner.[name, Scalar.tryFromExpression]
 
 
     /// Type wrapper for R data.frame instances.
@@ -196,10 +183,54 @@ module RTypes =
             | ActivePatterns.Factor Singletons.engine.Value e -> Some { Sexp = e }
             | _ -> None
 
+    type RVector<[<Measure>] 'u> =
+        | NumericV of Real.Vector.RRealVector<'u>
+        | IntegerV of Real.Vector.RRealVector<'u> // <int>
+        | LogicalV of Real.Vector.RRealVector<'u> // <bool>
+        | CharacterV of Real.Vector.RRealVector<'u> // <string>
+        | ComplexV of Real.Vector.RRealVector<'u> // <Extensions.RComplex>
+        | RawV of Real.Vector.RRealVector<'u> // <byte>
+
+    module GenericVector =
+
+        let tryCreate sexp =
+            match sexp with
+            | ActivePatterns.RealVector Singletons.engine.Value v ->
+                Real.Vector.tryCreate v
+                |> Option.map NumericV
+            | _ -> failwith "not implemented"
+
+
+    type RScalar<[<Measure>] 'u> =
+        | NumericS of Real.Scalar.RRealScalar<'u>
+        // | IntegerV of VectorBase.RVectorBase<int>
+        // | LogicalV of VectorBase.RVectorBase<bool>
+        // | CharacterV of VectorBase.RVectorBase<string>
+        // | ComplexV of VectorBase.RVectorBase<Extensions.RComplex>
+        // | RawV of VectorBase.RVectorBase<byte>
+
+    module GenericScalar =
+
+        let tryCreate sexp =
+            match sexp with
+            | ActivePatterns.RealVector Singletons.engine.Value v ->
+                Real.Scalar.tryFromExpression v
+                |> Option.map NumericS
+            | _ -> failwith "not implemented"
+
+
     /// A wrapped representation of an R value, which
     /// remains in R. It is not within .NET memory space.
-    type RSemantic =
-        | ScalarInR of Scalar.RNumericScalar
-        | VectorInR of Vector.RVector
+    type RSemantic<[<Measure>] 'u> =
+        | ScalarInR of RScalar<'u>
+        | VectorInR of RVector<'u>
         | DataFrameInR of DataFrame.RFrame
         | FactorInR of Factor.RFactor
+
+    module Semantic =
+
+        let getExpr semantic =
+            match semantic with
+            | ScalarInR s ->
+                match s with
+                | NumericS s -> s.RExpr
