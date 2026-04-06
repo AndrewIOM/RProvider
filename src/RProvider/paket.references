@@ -1,5 +1,4 @@
 FSharp.Core
 Newtonsoft.Json
 PipeMethodCalls
-System.ComponentModel.Composition
 System.Reflection.MetadataLoadContext

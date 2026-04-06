@@ -64,8 +64,7 @@ module internal Call =
                 |> List.map (fun v -> "", convertToR Singletons.engine.Value v)
 
         let allArgs = namedArgs @ unnamedArgsOrdered
-        let argsPairlist = PairList.build Singletons.engine.Value allArgs
-        Evaluate.call rEnv fn argsPairlist Singletons.engine.Value
+        Evaluate.call rEnv fn allArgs Singletons.engine.Value
 
     /// Call an R function by name given a function name.
     let callFuncByName
