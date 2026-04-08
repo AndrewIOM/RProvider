@@ -46,9 +46,11 @@ module RInterop =
         if not (Singletons.loadedPackages.Contains packageName) then
             let globalEnv = REnvironment.globalEnv Singletons.engine.Value
             let result = Evaluate.eval globalEnv ("require(" + packageName + ")")
-            if not <| result.FromR<bool>() then
-                failwithf "Loading package %s failed" packageName
-
+            match result.FromR<bool option>() with
+            | Some res ->
+                if not res then
+                    failwithf "Package %s not installed" packageName
+            | None -> failwithf "Loading package %s failed" packageName
             Singletons.loadedPackages.Add packageName |> ignore
 
     /// Determines whether an expression is a value or a function.
@@ -87,7 +89,7 @@ module RInterop =
             RValue.Value
 
     /// Get bindings representing 
-    let getBindings packageName =
+    let getBindings (packageName: string) =
 
         // In R, a namespace is an environment
         let nsEnv = REnvironment.ofNamespace Singletons.engine.Value packageName
@@ -111,7 +113,7 @@ module RInterop =
     /// Given an R environment scope, call a function given the
     /// named and unnamed arguments. 
     let callFunc
-        (rEnv: REnvironment.REnvironment) 
+        (rEnv: REnvironment) 
         (fn: SymbolicExpression)
         (argsByName: seq<KeyValuePair<string, obj>>)
         (varArgs: obj [])
@@ -121,7 +123,7 @@ module RInterop =
 
     /// Call an R function by name given a function name.
     let callFuncByName
-        (rEnv: REnvironment.REnvironment)
+        (rEnv: REnvironment)
         (packageName: string)
         (funcName: string)
         (namedArgs: seq<KeyValuePair<string,obj>>)

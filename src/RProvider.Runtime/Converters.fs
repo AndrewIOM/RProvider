@@ -15,7 +15,7 @@ module Convert =
     /// for RComplex). The values are extracted into .NET memory space.
     let tryFromRStructural<'outType> (engine : NativeApi.RunningEngine) (sexp : SymbolicExpression) : 'outType option =
         
-        let retype (x: 'b) : Option<'a> = x |> box |> unbox |> Some
+        let retype (x: 'b) : Option<'outType> = x |> box |> unbox<'outType> |> Some
         let at = typeof<'outType>
         
         match sexp with
@@ -25,7 +25,7 @@ module Convert =
             xs |> Extract.extractIntArray engine |> retype |> unbox
         | RealVector engine xs when at = typeof<float[]> ->
             xs |> Extract.extractFloatArray engine |> retype |> unbox
-        | LogicalVector engine xs when at = typeof<bool[]> ->
+        | LogicalVector engine xs when at = typeof<bool option[]> ->
             xs |> Extract.extractLogicalArray engine |> retype |> unbox
         | CharacterVector engine xs when at = typeof<string[]> ->
             xs |> Extract.extractStringArray engine |> retype |> unbox
@@ -37,7 +37,7 @@ module Convert =
             xs |> Extract.extractIntArray engine |> Array.toList |> retype |> unbox
         | RealVector engine xs when at = typeof<float list> ->
             xs |> Extract.extractFloatArray engine |> Array.toList |> retype |> unbox
-        | LogicalVector engine xs when at = typeof<bool list> ->
+        | LogicalVector engine xs when at = typeof<bool option list> ->
             xs |> Extract.extractLogicalArray engine |> Array.toList |> retype |> unbox
         | CharacterVector engine xs when at = typeof<string list> ->
             xs |> Extract.extractStringArray engine |> Array.toList |> retype |> unbox
@@ -49,7 +49,7 @@ module Convert =
             xs |> Extract.extractIntArray engine |> Array.head |> retype |> unbox
         | RealVector engine xs when at = typeof<float> ->
             xs |> Extract.extractFloatArray engine |> Array.head |> retype |> unbox
-        | LogicalVector engine xs when at = typeof<bool> ->
+        | LogicalVector engine xs when at = typeof<bool option> ->
             xs |> Extract.extractLogicalArray engine |> Array.head |> retype |> unbox
         | CharacterVector engine xs when at = typeof<string> ->
             xs |> Extract.extractStringArray engine |> Array.head |> retype |> unbox
@@ -62,7 +62,7 @@ module Convert =
             v |> Extract.extractStringMatrix engine |> retype |> unbox
         | IntegerMatrix engine v when at = typeof<int [,]> ->
             v |> Extract.extractIntMatrix engine |> retype |> unbox
-        | LogicalMatrix engine v when at = typeof<bool [,]> ->
+        | LogicalMatrix engine v when at = typeof<bool option [,]> ->
             v |> Extract.extractLogicalMatrix engine |> retype |> unbox
         
         // Empty vectors in R are represented as null
@@ -72,8 +72,8 @@ module Convert =
         | Null engine _ when at = typeof<RComplex []> -> retype <| Array.empty<RComplex>
         | Null engine _ when at = typeof<int list> -> retype <| List.empty<int>
         | Null engine _ when at = typeof<int []> -> retype <| Array.empty<int>
-        | Null engine _ when at = typeof<bool list> -> retype <| List.empty<bool>
-        | Null engine _ when at = typeof<bool []> -> retype <| Array.empty<bool>
+        | Null engine _ when at = typeof<bool option list> -> retype <| List.empty<bool>
+        | Null engine _ when at = typeof<bool option []> -> retype <| Array.empty<bool>
         | Null engine _ when at = typeof<double list> -> retype <| List.empty<double>
         | Null engine _ when at = typeof<double []> -> retype <| Array.empty<double>
 

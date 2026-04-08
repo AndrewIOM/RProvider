@@ -8,7 +8,7 @@ open RProvider.Internal.RInit
 /// in R, and handles execution using the RProvider singletons.
 module internal Evaluate =
 
-    let eval (env: REnvironment.REnvironment) (expr: string) =
+    let eval (env: REnvironment) (expr: string) =
         Logging.logWithOutput
             Singletons.characterDevice
             (fun () ->
@@ -24,7 +24,7 @@ module internal Evaluate =
                 Symbol.setSymbol symbol (Evaluate.eval expr env engine)
             )
 
-    let exec (env:REnvironment.REnvironment) (expr: string) : unit =
+    let exec (env:REnvironment) (expr: string) : unit =
         Logging.logWithOutput
             Singletons.characterDevice
             (fun () ->
@@ -44,7 +44,7 @@ module internal Call =
     /// named and unnamed arguments. 
     let callFunc
         convertToR
-        (rEnv: REnvironment.REnvironment) 
+        (rEnv: REnvironment) 
         (fn: SymbolicExpression)
         (argsByName: seq<KeyValuePair<string, obj>>)
         (varArgs: obj [])
@@ -52,7 +52,7 @@ module internal Call =
 
         let namedArgs =
             argsByName
-            |> Seq.map (fun kvp -> kvp.Key, convertToR Singletons.engine.Value kvp.Value)
+            |> Seq.map (fun kvp -> Some kvp.Key, convertToR Singletons.engine.Value kvp.Value)
             |> Seq.toList
 
         let unnamedArgsOrdered =
@@ -61,7 +61,7 @@ module internal Call =
             else
                 varArgs
                 |> Array.toList
-                |> List.map (fun v -> "", convertToR Singletons.engine.Value v)
+                |> List.map (fun v -> None, convertToR Singletons.engine.Value v)
 
         let allArgs = namedArgs @ unnamedArgsOrdered
         Evaluate.call rEnv fn allArgs Singletons.engine.Value
@@ -69,7 +69,7 @@ module internal Call =
     /// Call an R function by name given a function name.
     let callFuncByName
         convertToR
-        (rEnv: REnvironment.REnvironment)
+        (rEnv: REnvironment)
         (packageName: string)
         (funcName: string)
         (namedArgs: seq<KeyValuePair<string,obj>>)
