@@ -12,6 +12,14 @@ open RProvider.Internal.Converters
 [<RequireQualifiedAccess>]
 module SymbolicExpression =
 
+    /// Send a .NET value to R memory, returning it's reference
+    /// as an R symbolic expression.
+    let ofObj item = Convert.toR Singletons.engine.Value item
+
+    /// Get the type of the expression as an R sexp type
+    let getExprType sexp =
+        SymbolicExpression.getType Singletons.engine.Value sexp
+
     /// <summary> For an S4 object, get a dictionary containing first the
     /// slot name and second the slot's R type. If the expression
     /// is not an S4 object, returns `None`.</summary>

@@ -4,8 +4,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
+    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Converters.fs" />
     <Compile Include="Interop.fs" />
   </ItemGroup>
   <ItemGroup>

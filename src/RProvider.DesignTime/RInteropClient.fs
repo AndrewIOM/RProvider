@@ -49,15 +49,16 @@ let startNewServerAsync () : Async<PipeClient<IRInteropServer>> =
 
     // Find RProvider.Server relevant platform-specific self-contained executable
     let exePath =
+        let architecture =
+            if RuntimeInformation.OSArchitecture = Architecture.Arm64 then "arm64"
+            else if RuntimeInformation.OSArchitecture = Architecture.X64 then "x64"
+            else failwithf "Your platform (%s) is not currently supported by RProvider." (RuntimeInformation.OSArchitecture.ToString())
         if RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then
-            if RuntimeInformation.OSArchitecture = Architecture.Arm64 then
-                Path.Combine(Path.GetDirectoryName(assemblyLocation), "server/osx-arm64", Server)
-            else
-                Path.Combine(Path.GetDirectoryName(assemblyLocation), "server/osx-x64", Server)
+            Path.Combine(Path.GetDirectoryName(assemblyLocation), Server + sprintf "-osx-%s.Server" architecture)
         else if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
-            Path.Combine(Path.GetDirectoryName(assemblyLocation), "server/linux-x64", Server)
+            Path.Combine(Path.GetDirectoryName(assemblyLocation), Server + sprintf "-linux-%s.Server" architecture)
         else if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
-            Path.Combine(Path.GetDirectoryName(assemblyLocation), "server/win-x64", Server + ".exe")
+            Path.Combine(Path.GetDirectoryName(assemblyLocation), Server + sprintf "-win-%s.Server.exe" architecture)
         else
             failwithf "Your OS (%s) is not currently supported by RProvider." RuntimeInformation.FrameworkDescription
 

@@ -1,3 +1,5 @@
+FSharp.Core
 Newtonsoft.Json
 PipeMethodCalls
-FSharp.Core
+System.Reflection.MetadataLoadContext
+RBridge.Extensions

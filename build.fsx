@@ -154,24 +154,6 @@ Target.create
                       Configuration = DotNet.BuildConfiguration.Release })
             (projectName + ".sln"))
 
-Target.create
-    "MakeServerExes"
-    (fun _ ->
-        Trace.log " --- Publishing the RProvider.Server executables --- "
-
-        serverRuntimes
-        |> List.iter
-            (fun runtime ->
-                Trace.logf " --- Publishing RProvider.Server for %s --- " runtime
-
-                DotNet.publish
-                    (fun args ->
-                        { args with
-                              Runtime = Some runtime
-                              SelfContained = Some false
-                              Configuration = DotNet.BuildConfiguration.Release
-                              OutputPath = Some(sprintf "src/RProvider/bin/Release/net5.0/server/%s/" runtime) })
-                    "src/RProvider.Server"))
 
 Target.create
     "BuildTests"
@@ -298,7 +280,6 @@ Target.create "All" ignore
 
 "Clean"
 ==> "AssemblyInfo"
-==> "MakeServerExes"
 ==> "Build"
 
 "Build"

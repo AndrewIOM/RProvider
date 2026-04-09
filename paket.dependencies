@@ -3,13 +3,13 @@ source https://www.nuget.org/api/v2
 frameworks: auto-detect
 storage: none
 
-nuget FSharp.Core ~> 10.0.0
+nuget FSharp.Core ~> 8
+nuget FSharp.TypeProviders.SDK 8.5.0
+
 nuget PipeMethodCalls 3.0.4
 nuget Newtonsoft.Json 13.0.1
 nuget System.Reflection.MetadataLoadContext ~> 10.0.0
-
-github fsprojects/FSharp.TypeProviders.SDK:f4aca36af04aa84b16ec04df6f6bf55ac2f17a73 src/ProvidedTypes.fsi
-github fsprojects/FSharp.TypeProviders.SDK:f4aca36af04aa84b16ec04df6f6bf55ac2f17a73 src/ProvidedTypes.fs
+nuget RBridge.Extensions 1.0.1
 
 group Test
 
@@ -17,5 +17,6 @@ group Test
     frameworks: auto-detect
     storage: none
 
+    nuget FSharp.Core ~> 8
     nuget Expecto
     nuget Expecto.FsCheck

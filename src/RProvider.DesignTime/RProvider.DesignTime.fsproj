@@ -1,20 +1,15 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DefineConstants>IS_DESIGNTIME</DefineConstants>
+    <!-- This allows the component to execute from 'bin' directory during build -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\paket-files\fsprojects\FSharp.TypeProviders.SDK\src\ProvidedTypes.fsi">
-      <Paket>True</Paket>
-      <Link>paket-files/ProvidedTypes.fsi</Link>
-    </Compile>
-    <Compile Include="..\..\paket-files\fsprojects\FSharp.TypeProviders.SDK\src\ProvidedTypes.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/ProvidedTypes.fs</Link>
-    </Compile>
     <Compile Include="..\Common\AssemblyInfo.fs" />
     <Compile Include="../Common/IRInteropServer.fs" />
     <Compile Include="RInteropClient.fs" />
@@ -25,5 +20,34 @@
   <ItemGroup>
     <ProjectReference Include="../RProvider.Runtime/RProvider.Runtime.fsproj" />
   </ItemGroup>
+  <Target Name="PublishServerRuntimes" BeforeTargets="Build">
+    <ItemGroup>
+      <_RIDs Include="win-x64;linux-x64;osx-x64;win-arm64;linux-arm64;osx-arm64" />
+    </ItemGroup>
+
+    <!-- Publish server for each RID -->
+    <MSBuild
+      Projects="../RProvider.Server/RProvider.Server.fsproj"
+      Targets="Publish"
+      Properties="
+        Configuration=$(Configuration);
+        RuntimeIdentifier=%(_RIDs.Identity);
+        SelfContained=false;
+        PublishSingleFile=true" />
+
+    <!-- Capture published files and annotate with RID -->
+    <ItemGroup>
+      <_PublishedServerFiles
+          Include="../RProvider.Server/bin/$(Configuration)/net10.0/%(_RIDs.Identity)/publish/RProvider.Server*">
+        <RID>%(_RIDs.Identity)</RID>
+      </_PublishedServerFiles>
+    </ItemGroup>
+
+    <!-- Copy into DesignTime output with RID-specific filenames -->
+    <Copy
+      SourceFiles="@(_PublishedServerFiles)"
+      DestinationFiles="@(_PublishedServerFiles->'$(OutputPath)RProvider.Server-%(RID)%(Extension)')"
+      SkipUnchangedFiles="true" />
+  </Target>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

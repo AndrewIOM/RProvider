@@ -32,7 +32,7 @@ RProvider | [![NuGet Badge](https://buildstats.info/nuget/RProvider)](https://ww
 
 Make sure the following **requirements** are installed on your system:
 
-- [dotnet SDK](https://www.microsoft.com/net/download/core) 5.0 or greater; and
+- [dotnet SDK](https://www.microsoft.com/net/download/core) 10.0 or greater; and
 - [R statistical language](http://cran.r-project.org/). _Note: on Windows, there is currently a bug in R preventing us from supporting R versions greater than 4.0.2._
 - R_HOME environment variable set to the R home directory. This can usually be identified by running the command 'R RHOME'.
 
@@ -61,9 +61,9 @@ Note that you can set the version of RProvider to use (for reproducability) by c
 
 ### How to use
 
-RProvider is distributed as a [NuGet package](https://nuget.org/packages/RProvider/), which can be used from an F# script or F# projects. See our [documentation](https://fslab.org/RProvider//) for more detailed information and tutorials.
+RProvider is distributed as a [NuGet package](https://nuget.org/packages/RProvider/), which can be used from an F# script or F# projects. See our [documentation](https://fslab.org/RProvider/) for more detailed information and tutorials.
 
-If you are using R 2.15 or later, you should not try to load the RProvider inside a script that is passed to FSI via the --use flag.  It seems that something about the way R initializes causes it to hang in that context.  Works fine if you load later.
+This release of RProvider has only been tested on R 4.2.0 and higher. It may work with earlier versions, but it is unknown if they will work correctly.
 
 ### Developing
 
@@ -75,9 +75,7 @@ Install the requirements listed in the above section. To build and test:
 To debug, enable logging by setting the RPROVIDER_LOG environment value to an existing text file. 
 
 ### License
-RProvider is covered by the BSD license.
-
-The library uses [RDotNet](https://github.com/rdotnet/rdotnet) which is also covered by the BSD license.
+RProvider is covered by the BSD 2‑Clause license. The type provider depends on [RBridge](https://github.com/AndrewIOM/fsharp-r-bridge), which is MIT-licensed.
 
 ### Maintainers
 * [AndrewIOM](https://github.com/AndrewIOM)

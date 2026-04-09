@@ -146,7 +146,6 @@ module RInterop =
         Call.call Converters.Convert.toR packageName funcName serializedRVal namedArgs varArgs
 
 
-
 /// [omit]
 /// Adds extensions to R symbolic expressions to support
 /// printing using R's internal print() function.
