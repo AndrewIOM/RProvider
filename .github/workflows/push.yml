@@ -49,8 +49,6 @@ jobs:
       run: dotnet paket restore
     - name: Restore dependencies
       run: dotnet restore RProvider.sln
-    - name: Restore dependencies (tests)
-      run: dotnet restore RProvider.Tests.sln
     - name: Build
       run: dotnet fsi build.fsx
     - name: Deploy documentation from master
