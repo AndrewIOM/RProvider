@@ -1,8 +1,7 @@
 namespace RProvider.Runtime
 
 open RBridge.Extensions
-open RProvider.Internal
-open RProvider.Internal.RInit
+open RProvider.Common
 
 /// Determines symbol names to apply for new bindings
 /// in R, and handles execution using the RProvider singletons.
@@ -12,33 +11,32 @@ module internal Evaluate =
         Logging.logWithOutput
             Singletons.characterDevice
             (fun () ->
-                Logging.logf "eval(%s)" expr
-                Evaluate.eval expr env Singletons.engine.Value)
+                LogFile.logf "eval(%s)" expr
+                Evaluate.tryEval expr env Singletons.engine.Value)
 
     /// Evaluate an expression, setting the result as the specified symbol name.
-    let evalTo env (expr: string) (symbol: string) device engine =
+    let evalTo env (expr: string) (symbol: string) engine =
         Logging.logWithOutput
             Singletons.characterDevice
             (fun () ->
-                Logging.logf "evalto(%s, %s)" expr symbol
-                Symbol.setSymbol symbol (Evaluate.eval expr env engine)
+                LogFile.logf "evalto(%s, %s)" expr symbol
+                Evaluate.tryEval expr env engine
+                |> Result.map(fun v -> Symbol.setSymbol symbol v env engine)
             )
 
-    let exec (env:REnvironment) (expr: string) : unit =
+    let exec (env:REnvironment) (expr: string) : Result<unit,string> =
         Logging.logWithOutput
             Singletons.characterDevice
             (fun () ->
-                Logging.logf "exec(%s)" expr
-                // TODO below used use instead of let. IDisposable?
-                let res = eval env expr
-                ())
+                LogFile.logf "exec(%s)" expr
+                eval env expr |> Result.map(fun _ -> ()))
 
 
 module internal Call =
 
     open RBridge
     open System.Collections.Generic
-    open RProvider.Serialise
+    open RProvider.Common.Serialisation
 
     /// Given an R environment scope, call a function given the
     /// named and unnamed arguments. 
@@ -48,7 +46,7 @@ module internal Call =
         (fn: SymbolicExpression)
         (argsByName: seq<KeyValuePair<string, obj>>)
         (varArgs: obj [])
-        : SymbolicExpression =
+        : Result<SymbolicExpression,string> =
 
         let namedArgs =
             argsByName
@@ -64,7 +62,7 @@ module internal Call =
                 |> List.map (fun v -> None, convertToR Singletons.engine.Value v)
 
         let allArgs = namedArgs @ unnamedArgsOrdered
-        Evaluate.call rEnv fn allArgs Singletons.engine.Value
+        Evaluate.tryCall rEnv fn allArgs Singletons.engine.Value
 
     /// Call an R function by name given a function name.
     let callFuncByName
@@ -74,13 +72,14 @@ module internal Call =
         (funcName: string)
         (namedArgs: seq<KeyValuePair<string,obj>>)
         (varArgs: obj array)
-        : SymbolicExpression =
+        : Result<SymbolicExpression,string> =
 
         let nsEnv = REnvironment.ofNamespace Singletons.engine.Value packageName
         let fn =
             REnvironment.tryGetValue Singletons.engine.Value nsEnv funcName
             |> Option.defaultWith (fun () ->
                 failwithf "Function %s not found in namespace %s" funcName packageName)
+            |> Promise.force Singletons.engine.Value
 
         callFunc convertToR rEnv fn namedArgs varArgs
 
@@ -94,7 +93,7 @@ module internal Call =
         (serializedRVal: string)
         (namedArgs: obj [])
         (varArgs: obj [])
-        : SymbolicExpression =
+        : Result<SymbolicExpression,string> =
 
         match deserializeRValue serializedRVal with
         | RValue.Function (paramsR, hasVarArg) ->
@@ -111,5 +110,9 @@ module internal Call =
 
         | RValue.Value ->
             let nsEnv = REnvironment.ofNamespace Singletons.engine.Value packageName
-            REnvironment.tryGetValue Singletons.engine.Value nsEnv funcName
-            |> Option.defaultWith (fun () -> failwithf "Value %s not found" funcName)
+            match REnvironment.tryGetValue Singletons.engine.Value nsEnv funcName with
+            | None -> Error (sprintf "Value %s not found" funcName)
+            | Some v ->
+                v
+                |> Promise.force Singletons.engine.Value
+                |> Ok

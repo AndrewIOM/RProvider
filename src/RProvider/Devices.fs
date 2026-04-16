@@ -1,4 +1,4 @@
-﻿namespace RProvider
+﻿namespace RProvider.Runtime
 
 open System.Text
 open RBridge.Devices

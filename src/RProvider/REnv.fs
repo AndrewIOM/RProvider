@@ -1,7 +1,7 @@
-namespace RProvider
+namespace RProvider.Runtime
 
 open RBridge.Extensions
-open RProvider.Internal.RInit
+open RProvider
 
 /// The object represents an R environment loaded from RData file.
 /// This type is typically used through an `RData` type provider. To

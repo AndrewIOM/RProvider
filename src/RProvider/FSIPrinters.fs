@@ -1,5 +1,6 @@
 namespace RProvider
 
+open RProvider.Runtime
 open RBridge
 
 /// Print functions that may be used in

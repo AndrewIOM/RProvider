@@ -3,9 +3,10 @@ module ConverterTests
 open RProvider
 open System
 open Expecto
-open RProvider.Serialise
 open System.Text
 open System.Globalization
+open RProvider.Common
+open RProvider.SymbolicExpressionExtensions
 
 // Generic function to test that a value round-trips
 // when SEXP is asked for the value by-type
@@ -92,18 +93,19 @@ let roundTrips =
 
     ]
 
-let serialisation =
-    testList "Serialisation" [
+// TODO Serialisation is now a server / client concern, not runtime.
+// let serialisation =
+//     testList "Serialisation" [
 
-        testProperty "Serialization of R values works" <| fun (isValue: bool) (args: string []) (hasVar: bool) ->
+//         testProperty "Serialization of R values works" <| fun (isValue: bool) (args: string []) (hasVar: bool) ->
         
-            let args = List.ofSeq args
+//             let args = List.ofSeq args
 
-            if args |> Seq.forall (fun a -> not (isNull a) && not (a.Contains(";"))) then
-                let rvalue = if isValue then RValue.Value else RValue.Function(args, hasVar)
-                let actual = deserializeRValue (serializeRValue (rvalue))
-                Expect.equal rvalue actual ""
+//             if args |> Seq.forall (fun a -> not (isNull a) && not (a.Contains(";"))) then
+//                 let rvalue = if isValue then RValue.Value else RValue.Function(args, hasVar)
+//                 let actual = deserializeRValue (serializeRValue (rvalue))
+//                 Expect.equal rvalue actual ""
 
 
 
-    ]
+//     ]

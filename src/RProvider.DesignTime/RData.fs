@@ -1,12 +1,11 @@
-﻿namespace RProvider
+﻿namespace RProvider.DesignTime
 
 open System.IO
 open System.Reflection
 open ProviderImplementation.ProvidedTypes
 open Microsoft.FSharp.Core.CompilerServices
 open RProvider
-open RProvider.Internal
-open Microsoft.FSharp.Quotations
+open RProvider.Common
 open PipeMethodCalls
 
 [<TypeProvider>]
@@ -24,33 +23,22 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
 
     /// Given a file name, generate static type inherited from REnv
     let generateTypes asm typeName (args: obj []) =
-        Logging.logf "Generating type for %s" typeName
+        LogFile.logf "Generating type for %s" typeName
         // Load the environment and generate the type
         let fileName = args.[0] :?> string
 
         let longFileName =
             if Path.IsPathRooted(fileName) then fileName else Path.Combine(cfg.ResolutionFolder, fileName)
 
-        let resTy = ProvidedTypeDefinition(asm, "RProvider", typeName, Some typeof<REnv>)
-        let isHosted = cfg.IsHostedExecution
-        let defaultResolutionFolder = cfg.ResolutionFolder
+        let resTy = ProvidedTypeDefinition(asm, "RProvider", typeName, None)
 
-        // Provide default ctor and ctor taking another file as an argument
-        let createREnvExpr (fileName: Expr<string>) =
-            <@@ let longFileName =
-                    if Path.IsPathRooted(%fileName) then %fileName
-                    elif isHosted then Path.Combine(defaultResolutionFolder, %fileName)
-                    else Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, %fileName)
-
-                REnv(longFileName) @@>
-
-        let ctor = ProvidedConstructor(parameters = [], invokeCode = fun _ -> createREnvExpr <@ fileName @>)
+        let ctor = ProvidedConstructor(parameters = [], invokeCode = fun _ -> <@@ IRInteropRuntime.loadRDataFile longFileName @@> )
         resTy.AddMember(ctor)
 
         let ctor =
             ProvidedConstructor(
                 parameters = [ ProvidedParameter("fileName", typeof<string>) ],
-                invokeCode = fun (Singleton fn) -> createREnvExpr (Expr.Cast fn)
+                invokeCode = fun (Singleton fn) -> <@@ IRInteropRuntime.loadRDataFile (%%fn : string) @@>
             )
 
         resTy.AddMember(ctor)
@@ -60,15 +48,15 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
             RInteropClient.getServer().InvokeAsync(fun s -> s.GetRDataSymbols(longFileName))
             |> Async.AwaitTask
             |> Async.RunSynchronously do
-            Logging.logf "Adding member %s" name
+            LogFile.logf "Adding member %s" name
 
             match typ with
             | null ->
                 // Generate property of type 'SymbolicExpression'
                 ProvidedProperty(
                     name,
-                    typeof<RBridge.SymbolicExpression>,
-                    getterCode = fun (Singleton self) -> <@@ ((%%self): REnv).Get(name) @@>
+                    typeof<RExpr>,
+                    getterCode = fun (Singleton self) -> <@@ IRInteropRuntime.getRDataSymbol (%%self) name @@>
                 )
                 |> resTy.AddMember
             | typ ->
@@ -78,11 +66,12 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
                 ProvidedProperty(
                     name,
                     typ,
-                    getterCode = fun (Singleton self) -> Expr.Coerce(<@@ ((%%self): REnv).Get(name).FromR() @@>, typ)
+                    getterCode = fun (Singleton self) ->
+                        <@@ IRInteropRuntime.getRDataSymbolTyped (%%self) name @@>
                 )
                 |> resTy.AddMember
 
-        Logging.logf "Finished generating types for %s" longFileName
+        LogFile.logf "Finished generating types for %s" longFileName
         resTy
 
     // Register the main (parameterized) type with F# compiler
@@ -99,8 +88,8 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
 
     do
         rdata.DefineStaticParameters([ parameter ], generateTypes asm)
-        Logging.logf "Defined static Parameters %O" parameter
+        LogFile.logf "Defined static Parameters %O" parameter
 
     do
         this.AddNamespace("RProvider", [ rdata ])
-        Logging.logf "RData added namespace %s" rdata.FullName
+        LogFile.logf "RData added namespace %s" rdata.FullName

@@ -1,4 +1,4 @@
-﻿namespace RProvider.Internal
+﻿namespace RProvider.Common
 
 /// Interface that is used for communication between the R provider server
 /// (RProvider.Server.exe) which communicates with R and the client that runs

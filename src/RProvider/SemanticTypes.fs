@@ -2,7 +2,6 @@ namespace RProvider.Runtime
 
 open RBridge
 open RBridge.Extensions
-open RProvider.Internal.RInit
 
 /// Types representing common R types, and
 /// functions for working with them.
@@ -18,12 +17,16 @@ module RTypes =
         let baseOp (fn: string) (a: SymbolicExpression) tryMake =
             let rEnv = REnvironment.globalEnv Singletons.engine.Value
             let sexp = Call.callFuncByName passThrough rEnv "base" fn Seq.empty [| a |]
-            tryMake sexp |> Option.get
+            match sexp with
+            | Ok sexp -> tryMake sexp |> Option.get
+            | Error e -> failwith e
 
         let baseOp2 (fn: string) (a: SymbolicExpression) (b: SymbolicExpression) tryMake =
             let rEnv = REnvironment.globalEnv Singletons.engine.Value
             let sexp = Call.callFuncByName passThrough rEnv "base" fn Seq.empty [| a; b |]
-            tryMake sexp |> Option.get
+            match sexp with
+            | Ok sexp -> tryMake sexp |> Option.get
+            | Error e -> failwith e
 
     /// A base 
     module VectorBase =

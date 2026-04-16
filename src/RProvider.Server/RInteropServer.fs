@@ -1,9 +1,10 @@
 ﻿namespace RProvider.Server
 
-open RProvider
-open RProvider.RInterop
-open RProvider.Internal
 open System
+open RProvider.Common
+open RProvider.Runtime
+open RProvider.Runtime.RInterop
+open RProvider.SymbolicExpressionExtensions
 
 /// Event loop (see below) can either perform some work item or stop
 type internal EventLoopMessage =
@@ -22,37 +23,37 @@ module internal EventLoop =
 
     /// Start the event loop - this should be called
     let startEventLoop () =
-        Logging.logf "server event loop: starting"
+        LogFile.logf "server event loop: starting"
 
         try
-            let initResultValue = RInit.Singletons.rLocation.Force()
+            let initResultValue = Singletons.rLocation.Force()
             let mutable running = true
 
             while running do
                 match queue.Take() with
                 | Run f ->
-                    Logging.logf "server event loop: got work item"
+                    LogFile.logf "server event loop: got work item"
                     f ()
                 | Stop ->
-                    Logging.logf "server event loop: got stop command"
+                    LogFile.logf "server event loop: got stop command"
                     running <- false
         with
-        | e -> Logging.logf "server event loop: failed with %A" e
+        | e -> LogFile.logf "server event loop: failed with %A" e
 
     /// Run a server command (that accesses REngine) safely in the event loop.
     /// This sends a command to the event loop & propagates exceptions
     let runServerCommandSafe f =
-        Logging.logf "Adding work item to queue"
+        LogFile.logf "Adding work item to queue"
         use evt = new System.Threading.AutoResetEvent(false)
-        Logging.logf "Debug 1"
+        LogFile.logf "Debug 1"
         let result = ref (Choice1Of3())
-        Logging.logf "Debug 2"
+        LogFile.logf "Debug 2"
 
         // Add function with exception handling to the queue & wait for result
         queue.Add(
             Run
                 (fun () ->
-                    Logging.logf "In queue"
+                    LogFile.logf "In queue"
 
                     try
                         try
@@ -71,7 +72,7 @@ module internal EventLoop =
         | Choice1Of3 () -> failwith "logic error: Item in the queue was not processed"
         | Choice2Of3 res -> res
         | Choice3Of3 ex ->
-            Logging.logf "There was an exception in the loop"
+            LogFile.logf "There was an exception in the loop"
             raise ex
 
 
@@ -83,7 +84,7 @@ type RInteropServer() =
         member x.InitializationErrorMessage() =
             // No need for event loop here, because this is initialized
             // when the event loop starts (so initResult has value now)
-            match RInit.Singletons.rLocation.Value with
+            match Singletons.rLocation.Value with
             | None -> "Error: could not locate an R install"
             | Some _ -> null
 
@@ -105,9 +106,9 @@ type RInteropServer() =
                 let env = REnv(file)
 
                 [| for k in env.Keys ->
-                       Logging.logf "GetRDataSymbols: key={%O}" k
+                       LogFile.logf "GetRDataSymbols: key={%O}" k
                        let v = env.Get(k)
-                       Logging.logf "GetRDataSymbols: value=%O" (v.FromR())
+                       LogFile.logf "GetRDataSymbols: value=%O" (v.FromR())
 
                        let typ =
                            try

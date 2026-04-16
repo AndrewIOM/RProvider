@@ -1,57 +1,85 @@
-﻿namespace RProvider
+﻿namespace RProvider.Runtime
 
 open System.Collections.Generic
 open RBridge
 open RBridge.Extensions
 open RBridge.Extensions.ActivePatterns
-open RProvider.Internal
-open RProvider.Internal.RInit
-open RProvider.Serialise
+open RProvider.Common
+open RProvider.Common.Serialisation
 open RProvider.Runtime
+open RProvider
 
 /// [omit]
 /// The layer that the type provider accesses to
 /// interop with R.
 module RInterop =
 
-    /// Replace dots in R names with underscores, making
-    /// them safe for use as .NET type names.
-    let makeSafeName (name: string) = name.Replace("_", "__").Replace(".", "_")
+    // TODO Move to more sensible location.
+    type private ResultBuilder() =
+        member _.Bind(m, f) = Result.bind f m
+        member _.Return(x) = Ok x
+        member _.ReturnFrom(m: Result<_,_>) = m
+        member _.Zero() = Ok ()
+        member _.Delay(f) = f()
+
+    let private result = ResultBuilder()
+
+    let private ofOption errMsg = function
+        | Some o -> Ok o
+        | None -> Error errMsg
 
     /// List packages available in the loaded R instance.
     let getPackages () : string [] =
         Logging.logf "Communicating with R to get packages"
         let globEnv = REnvironment.globalEnv Singletons.engine.Value
-        let res =
-            match Evaluate.eval globEnv ".packages(all.available=T)" with
+        match Evaluate.eval globEnv ".packages(all.available=T)" with
+        | Error e ->
+            Logging.logf "Failed to get packages from R: %s" e
+            Array.empty
+        | Ok v ->
+            match v with
             | CharacterVector Singletons.engine.Value v -> v |> Extract.extractStringArray Singletons.engine.Value
             | _ -> failwith "Unexpected result getting packages"
-        Logging.logf "Result: %O" res
-        res
 
     /// Get the description for a particular package from R.
     let getPackageDescription packageName : string =
         let globEnv = REnvironment.globalEnv Singletons.engine.Value
-        Evaluate.eval globEnv ("packageDescription(\"" + packageName + "\")$Description")
-        |> SymbolicExpression.getValue
+        Evaluate.eval globEnv (sprintf "packageDescription(\"%s\")$Description" packageName)
+        |> Result.bind (SymbolicExpression.tryGetValue >> ofOption "[Could not extract package description]")
+        |> Result.defaultValue "[Could not get package description from R]"
 
     /// Read a package's metadata to extract descriptions
     /// of each user-facing function.
-    let getFunctionDescriptions packageName =
+    let getFunctionDescriptions packageName : (string * string) array =
         let globEnv = REnvironment.globalEnv Singletons.engine.Value
-        Evaluate.exec globEnv <| sprintf """rds = readRDS(system.file("Meta", "Rd.rds", package = "%s"))""" packageName
-        Array.zip ((Evaluate.eval globEnv "rds$Name").FromR<string []>()) ((Evaluate.eval globEnv "rds$Title").FromR<string []>())
+        
+        let evalStringArray expr : Result<string[],string> =
+            Evaluate.eval globEnv expr
+            |> Result.bind (SymbolicExpression.tryGetValue >> ofOption "Could not extract to string array")
+
+        result {
+            do! Evaluate.exec globEnv $"rds <- readRDS(system.file('Meta', 'Rd.rds', package = '{packageName}'))"
+            let! names  = evalStringArray "rds$Name"
+            let! titles = evalStringArray "rds$Title"
+            return Array.zip names titles
+        }
+        |> Result.defaultValue [||]
 
     let loadPackage packageName : unit =
         if not (Singletons.loadedPackages.Contains packageName) then
-            let globalEnv = REnvironment.globalEnv Singletons.engine.Value
-            let result = Evaluate.eval globalEnv ("require(" + packageName + ")")
-            match result.FromR<bool option>() with
-            | Some res ->
-                if not res then
-                    failwithf "Package %s not installed" packageName
-            | None -> failwithf "Loading package %s failed" packageName
-            Singletons.loadedPackages.Add packageName |> ignore
+            let globalEnv = REnvironment.globalEnv Singletons.engine.Value            
+            let result =
+                Evaluate.eval globalEnv ("require(" + packageName + ")")
+                |> Result.defaultWith(fun _ -> failwith "Failed to load package")
+            match SymbolicExpression.tryGetValue<bool option> result |> ofOption "Failed to load package" with
+            | Error e -> failwith e
+            | Ok res ->
+                match res with
+                | Some res ->
+                    if not res then
+                        failwithf "Package %s not installed" packageName
+                | None -> failwithf "Loading package %s failed" packageName
+                Singletons.loadedPackages.Add packageName |> ignore
 
     /// Determines whether an expression is a value or a function.
     /// If a function, determines which arguments are available.
@@ -60,18 +88,19 @@ module RInterop =
         match sexp with
         | Closure Singletons.engine.Value clos ->
 
-            let formals = Function.getFormals Singletons.engine.Value clos
             let names =
-                Attributes.tryNames Singletons.engine.Value formals
-                |> Option.defaultValue [||]
-                |> Array.toList
+                match Closures.tryFormals Singletons.engine.Value clos with
+                | Some formals ->
+                    formals
+                    |> List.map(fun f -> f.Name)
+                | None -> []
 
             let hasVarArgs = names |> List.contains "..."
             let args = names |> List.filter ((<>) "...")
             RValue.Function(args, hasVarArgs)
 
-        | ActivePatterns.BuiltIn Singletons.engine.Value _ 
-        | ActivePatterns.Special Singletons.engine.Value _ ->
+        | ActivePatterns.BuiltinFunction Singletons.engine.Value _ 
+        | ActivePatterns.SpecialFunction Singletons.engine.Value _ ->
             // Don't know how to reflect on builtin or special args so just do as varargs
             RValue.Function([], true)
 
@@ -88,7 +117,7 @@ module RInterop =
             Logging.logf "Ignoring name of unknown SEXP type"
             RValue.Value
 
-    /// Get bindings representing 
+    /// Get bindings representing ...
     let getBindings (packageName: string) =
 
         // In R, a namespace is an environment
@@ -96,15 +125,17 @@ module RInterop =
 
         let names =
             Evaluate.eval nsEnv "ls(all.names=TRUE)"
-            |> Extract.extractStringArray Singletons.engine.Value
+            |> Result.map (Extract.extractStringArray Singletons.engine.Value)
+            |> Result.defaultValue [||] // TODO maybe log out errors
 
         names
         |> Array.choose (fun name ->
             match REnvironment.tryGetValue Singletons.engine.Value nsEnv name with
             | None -> None
             | Some sexp ->
-                let info = bindingInfo sexp
-                Some (name, Serialise.serializeRValue info)
+                let forced = Promise.force Singletons.engine.Value sexp
+                let info = bindingInfo forced
+                Some (name, serializeRValue info)
         )
 
     let globalEnvironment () =
@@ -119,7 +150,8 @@ module RInterop =
         (varArgs: obj [])
         : SymbolicExpression =
 
-        Call.callFunc Converters.Convert.toR rEnv fn argsByName varArgs
+        Call.callFunc Convert.toR rEnv fn argsByName varArgs
+        |> Result.defaultWith (fun e -> failwithf "Error in function: %s" e)
 
     /// Call an R function by name given a function name.
     let callFuncByName
@@ -130,7 +162,8 @@ module RInterop =
         (varArgs: obj array)
         : SymbolicExpression =
         
-        Call.callFuncByName Converters.Convert.toR rEnv packageName funcName namedArgs varArgs
+        Call.callFuncByName Convert.toR rEnv packageName funcName namedArgs varArgs
+        |> Result.defaultWith (fun e -> failwithf "Error in function: %s" e)
 
     /// Call an R function given arguments, using serialised values (i.e.
     /// from the type provider itself over a socket).
@@ -143,7 +176,8 @@ module RInterop =
         (varArgs: obj [])
         : SymbolicExpression =
 
-        Call.call Converters.Convert.toR packageName funcName serializedRVal namedArgs varArgs
+        Call.call Convert.toR packageName funcName serializedRVal namedArgs varArgs
+        |> Result.defaultWith (fun e -> failwithf "Error in function: %s" e)
 
 
 /// [omit]
@@ -175,16 +209,19 @@ module SymbolicExpressionPrintExtensions =
         finally
             System.IO.File.Delete temp
 
+    let isUnixOrMac =
+        System.Environment.OSVersion.Platform = System.PlatformID.MacOSX ||
+        System.Environment.OSVersion.Platform = System.PlatformID.Unix
 
     type SymbolicExpression with
         /// Call the R print function and return output as a string
         member this.Print() : string =
 
-            let capturer = if Configuration.isUnixOrMac () then printUsingTempFile else printUsingDevice
+            let capturer = if isUnixOrMac then printUsingTempFile else printUsingDevice
 
             capturer
                 (fun () ->
-                    let rvalStr = RValue.Function([ "x" ], true) |> Serialise.serializeRValue
+                    let rvalStr = RValue.Function([ "x" ], true) |> serializeRValue
                     RInterop.call "base" "print" rvalStr [| this |] [||] |> ignore)
 
 

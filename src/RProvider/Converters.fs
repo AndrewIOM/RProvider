@@ -1,13 +1,14 @@
-﻿namespace RProvider.Internal.Converters
+﻿namespace RProvider.Runtime
 
-open System
-open System.Collections.Generic
-open RProvider.Internal.RInit
 open RBridge
 open RBridge.Extensions
 open RBridge.Extensions.ActivePatterns
 open RProvider.Runtime.RTypes
 
+/// Contains conversion functions to convert from .NET types
+/// to values in R, and from R to .NET types. Functions allow
+/// extraction of R data to .NET memory, or expression of R objects
+/// in .NET semantic wrappers.
 module Convert =
 
     /// Default conversions from R to .NET primitive types or

@@ -1,10 +1,9 @@
 namespace RProvider
 
 open RBridge
-open RProvider.Internal.RInit
 open RBridge.Extensions
 open RBridge.Extensions.ActivePatterns
-open RProvider.Internal.Converters
+open RProvider.Runtime
 
 /// Adds functions to the Symbolic Expression module,
 /// which cover semantic operations and have the R engine
