@@ -30,11 +30,11 @@ module RInterop =
 
     /// List packages available in the loaded R instance.
     let getPackages () : string [] =
-        Logging.logf "Communicating with R to get packages"
+        LogFile.logf "Communicating with R to get packages"
         let globEnv = REnvironment.globalEnv Singletons.engine.Value
         match Evaluate.eval globEnv ".packages(all.available=T)" with
         | Error e ->
-            Logging.logf "Failed to get packages from R: %s" e
+            LogFile.logf "Failed to get packages from R: %s" e
             Array.empty
         | Ok v ->
             match v with
@@ -87,7 +87,6 @@ module RInterop =
 
         match sexp with
         | Closure Singletons.engine.Value clos ->
-
             let names =
                 match Closures.tryFormals Singletons.engine.Value clos with
                 | Some formals ->
@@ -114,10 +113,26 @@ module RInterop =
             RValue.Value
 
         | _ ->
-            Logging.logf "Ignoring name of unknown SEXP type"
+            // LogFile.logf "Ignoring name of unknown SEXP: %A" (SymbolicExpression.print Singletons.engine.Value sexp)
             RValue.Value
 
-    /// Get bindings representing ...
+    /// TODO. Ionide (VSCode mac) only works if this function is here
+    /// rather than in RBridge.Extensions.REnvirnonment. I have no idea
+    /// why this would be the case. Similarly, certain types of logging
+    /// in RBridge broke ionide fsac and were removed.
+    let tryGetValue (engine: NativeApi.RunningEngine) (env: REnvironment) (name: string) =
+        let sym = NativeApi.install name engine.Api
+
+        let valuePtr =
+            NativeApi.getVarEx sym env.Pointer false engine.Api.unboundVal engine.Api
+
+        if valuePtr = engine.Api.unboundVal then
+            None
+        else
+            Some { ptr = valuePtr }
+
+    /// Get bindings representing the named and varargs of
+    /// each function in a package.
     let getBindings (packageName: string) =
 
         // In R, a namespace is an environment
@@ -126,11 +141,11 @@ module RInterop =
         let names =
             Evaluate.eval nsEnv "ls(all.names=TRUE)"
             |> Result.map (Extract.extractStringArray Singletons.engine.Value)
-            |> Result.defaultValue [||] // TODO maybe log out errors
+            |> Result.defaultValue [||]
 
         names
         |> Array.choose (fun name ->
-            match REnvironment.tryGetValue Singletons.engine.Value nsEnv name with
+            match tryGetValue Singletons.engine.Value nsEnv name with
             | None -> None
             | Some sexp ->
                 let forced = Promise.force Singletons.engine.Value sexp

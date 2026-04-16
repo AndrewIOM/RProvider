@@ -31,3 +31,167 @@ type IRInteropServer =
     /// of `symExpr.Value` using currently installed convertors). If the type is not
     /// available, this returns `null`.
     abstract member GetRDataSymbols: string -> (string * System.Type) []
+
+module InteropServer =
+
+    open System.IO
+
+    type ServerRequest =
+        | InitializationErrorMessage
+        | GetPackages
+        | LoadPackage of string
+        | GetBindings of string
+        | GetFunctionDescriptions of string
+        | GetPackageDescription of string
+        | GetRDataSymbols of string
+
+    type ServerResponse =
+        | InitializationErrorMessageResult of string
+        | Packages of string[]
+        | UnitResult
+        | Bindings of (string * string)[]
+        | FunctionDescriptions of (string * string)[]
+        | PackageDescription of string
+        | RDataSymbols of (string * System.Type)[]
+        | ServerError of string
+
+    module Request =
+
+        let write (w: BinaryWriter) (req: ServerRequest) =
+            match req with
+            | InitializationErrorMessage ->
+                w.Write "InitializationErrorMessage"
+
+            | GetPackages ->
+                w.Write "GetPackages"
+
+            | LoadPackage pkg ->
+                w.Write "LoadPackage"
+                w.Write pkg
+
+            | GetBindings pkg ->
+                w.Write "GetBindings"
+                w.Write pkg
+
+            | GetFunctionDescriptions pkg ->
+                w.Write "GetFunctionDescriptions"
+                w.Write pkg
+
+            | GetPackageDescription pkg ->
+                w.Write "GetPackageDescription"
+                w.Write pkg
+
+            | GetRDataSymbols path ->
+                w.Write "GetRDataSymbols"
+                w.Write path
+
+        let read (r: BinaryReader) : ServerRequest =
+            match r.ReadString() with
+            | "InitializationErrorMessage" -> InitializationErrorMessage
+            | "GetPackages" -> GetPackages
+            | "LoadPackage" -> LoadPackage (r.ReadString())
+            | "GetBindings" -> GetBindings (r.ReadString())
+            | "GetFunctionDescriptions" -> GetFunctionDescriptions (r.ReadString())
+            | "GetPackageDescription" -> GetPackageDescription (r.ReadString())
+            | "GetRDataSymbols" -> GetRDataSymbols (r.ReadString())
+            | other -> failwithf "Unknown ServerRequest case: %s" other
+
+    module Response =
+
+        let write (w: BinaryWriter) (resp: ServerResponse) =
+            match resp with
+
+            | InitializationErrorMessageResult s ->
+                w.Write "InitializationErrorMessageResult"
+                w.Write s
+
+            | Packages pkgs ->
+                w.Write "Packages"
+                w.Write pkgs.Length
+                for p in pkgs do
+                    w.Write p
+
+            | UnitResult ->
+                w.Write "UnitResult"
+
+            | Bindings arr ->
+                w.Write "Bindings"
+                w.Write arr.Length
+                for (a, b) in arr do
+                    w.Write a
+                    w.Write b
+
+            | FunctionDescriptions arr ->
+                w.Write "FunctionDescriptions"
+                w.Write arr.Length
+                for (a, b) in arr do
+                    w.Write a
+                    w.Write b
+
+            | PackageDescription d ->
+                w.Write "PackageDescription"
+                w.Write d
+
+            | RDataSymbols syms ->
+                w.Write "RDataSymbols"
+                w.Write syms.Length
+                for (name, typ) in syms do
+                    w.Write name
+                    w.Write (typ.AssemblyQualifiedName)
+
+            | ServerError msg ->
+                w.Write "ServerError"
+                w.Write msg
+
+
+        let read (r: BinaryReader) : ServerResponse =
+            match r.ReadString() with
+
+            | "InitializationErrorMessageResult" ->
+                InitializationErrorMessageResult (r.ReadString())
+
+            | "Packages" ->
+                let n = r.ReadInt32()
+                let arr = Array.init n (fun _ -> r.ReadString())
+                Packages arr
+
+            | "UnitResult" ->
+                UnitResult
+
+            | "Bindings" ->
+                let n = r.ReadInt32()
+                let arr =
+                    Array.init n (fun _ ->
+                        let a = r.ReadString()
+                        let b = r.ReadString()
+                        a, b)
+                Bindings arr
+
+            | "FunctionDescriptions" ->
+                let n = r.ReadInt32()
+                let arr =
+                    Array.init n (fun _ ->
+                        let a = r.ReadString()
+                        let b = r.ReadString()
+                        a, b)
+                FunctionDescriptions arr
+
+            | "PackageDescription" ->
+                PackageDescription (r.ReadString())
+
+            | "RDataSymbols" ->
+                let n = r.ReadInt32()
+                let arr =
+                    Array.init n (fun _ ->
+                        let name = r.ReadString()
+                        let aqn = r.ReadString()
+                        let typ = System.Type.GetType(aqn, throwOnError = false)
+                        name, typ)
+                RDataSymbols arr
+
+            | "ServerError" ->
+                ServerError (r.ReadString())
+
+            | other ->
+                failwithf "Unknown ServerResponse case: %s" other
+

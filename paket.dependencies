@@ -6,10 +6,8 @@ storage: none
 nuget FSharp.Core ~> 8
 nuget FSharp.TypeProviders.SDK 8.5.0
 
-nuget PipeMethodCalls 3.0.4
-nuget Newtonsoft.Json 13.0.1
 nuget System.Reflection.MetadataLoadContext ~> 10.0.0
-nuget RBridge.Extensions 1.0.3
+nuget RBridge.Extensions 1.0.4
 
 group Test
 

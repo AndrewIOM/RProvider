@@ -4,6 +4,7 @@ open RBridge
 open RBridge.Extensions
 open RBridge.Extensions.ActivePatterns
 open RProvider.Runtime.RTypes
+open RProvider.Common
 
 /// Contains conversion functions to convert from .NET types
 /// to values in R, and from R to .NET types. Functions allow
@@ -94,7 +95,7 @@ module Convert =
         //     xs |> Array.map (fun seconds -> Create.dateTimeVectorFromSeconds seconds)
 
         | _ ->
-            Logging.logf "Cannot convert SexpType %A to %s"
+            LogFile.logf "Cannot convert SexpType %A to %s"
                 (SymbolicExpression.getType engine sexp)
                 typeof<'outType>.FullName
             None
@@ -125,7 +126,7 @@ module Convert =
         // - Date and DateTime?
 
         | _ ->
-            Logging.logf "No typed conversion was possible for sexp: %A"
+            LogFile.logf "No typed conversion was possible for sexp: %A"
                 (SymbolicExpression.getType engine sexp)
             None
 

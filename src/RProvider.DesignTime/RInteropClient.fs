@@ -1,16 +1,66 @@
 ﻿namespace RProvider.DesignTime
 
 open System
+open System.IO
 open System.IO.Pipes
 open System.Reflection
-open System.IO
 open System.Diagnostics
 open System.Threading
-open PipeMethodCalls
-open RProvider.Common
 open System.Runtime.InteropServices
+open System.Text
+open RProvider.Common
+open RProvider.Common.InteropServer
 
 module RInteropClient =
+
+    type RawPipeClient(pipeName: string) =
+
+        // Connect synchronously (safe for type providers)
+        let stream =
+            new NamedPipeClientStream(
+                ".",
+                pipeName,
+                PipeDirection.InOut,
+                PipeOptions.Asynchronous
+            )
+
+        do
+            stream.Connect(5000) // 5 second timeout
+            LogFile.logf "RawPipeClient: connected to '%s'" pipeName
+
+        let reader = new BinaryReader(stream, Encoding.UTF8)
+        let writer = new BinaryWriter(stream, Encoding.UTF8)
+
+        member _.Call<'T>(req: ServerRequest) : 'T =
+
+            let reqBytes =
+                use ms = new MemoryStream()
+                use bw = new BinaryWriter(ms, Encoding.UTF8)
+                Request.write bw req
+                bw.Flush ()
+                ms.ToArray ()
+
+            writer.Write reqBytes.Length
+            writer.Write reqBytes
+            writer.Flush ()
+
+            // Read response
+            let len = reader.ReadInt32()
+            let respBytes = reader.ReadBytes(len)
+            let resp =
+                use ms = new MemoryStream(respBytes)
+                use br = new BinaryReader(ms, Encoding.UTF8)
+                Response.read br
+
+            match resp with
+            | InitializationErrorMessageResult s -> s :> obj :?> 'T
+            | Packages pkgs -> pkgs :> obj :?> 'T
+            | UnitResult -> Unchecked.defaultof<'T>
+            | Bindings b -> b :> obj :?> 'T
+            | FunctionDescriptions f -> f :> obj :?> 'T
+            | PackageDescription d -> d :> obj :?> 'T
+            | RDataSymbols syms -> syms :> obj :?> 'T
+            | ServerError msg -> failwith msg
 
     [<Literal>]
     let Server = "RProvider.Server"
@@ -35,7 +85,7 @@ module RInteropClient =
         sprintf "RInteropServer_%d_%d_%d" pid tick salt
 
     // Global variables for remembering the current server
-    let mutable lastServer: PipeClient<IRInteropServer> option = None
+    let mutable lastServer: RawPipeClient option = None
     let serverLock = obj ()
 
     /// Returns the real assembly location - when shadow copying is enabled, this
@@ -43,7 +93,7 @@ module RInteropClient =
     let getAssemblyLocation (assem: Assembly) =
         if AppDomain.CurrentDomain.ShadowCopyFiles then (Uri(assem.Location)).LocalPath else assem.Location
 
-    let startNewServerAsync () : Async<PipeClient<IRInteropServer>> =
+    let startNewServer () : RawPipeClient =
         LogFile.logf "Starting new connection to server from client"
         let channelName = newChannelName ()
         let tempFile = Path.GetTempFileName()
@@ -70,15 +120,6 @@ module RInteropClient =
             else
                 failwithf "Your OS (%s) is not currently supported by RProvider." RuntimeInformation.FrameworkDescription
 
-        // If this is Mac or Linux, we try to run "chmod" to make the server executable
-        if Environment.OSVersion.Platform = PlatformID.Unix || Environment.OSVersion.Platform = PlatformID.MacOSX then
-            LogFile.logf "Setting execute permission on '%s'" exePath
-
-            try
-                Process.Start("chmod", "+x '" + exePath + "'").WaitForExit()
-            with
-            | _ -> ()
-
         // Log some information about the process first
         LogFile.logf "Starting server '%s' with arguments '%s' (exists=%b)" exePath arguments (File.Exists(exePath))
 
@@ -92,28 +133,13 @@ module RInteropClient =
                 WorkingDirectory = Path.GetDirectoryName(assemblyLocation)
             )
 
-        // TODO Do we need to set R_HOME here any more?
-        // Can we pull it in from environment?
-        // if startInfo.EnvironmentVariables.ContainsKey("R_HOME") |> not then
-        //     LogFile.logf "R_HOME not set"
-
-        //     match RProvider.Internal.RInit.Singletons.rLocation.Force() with
-        //     | Some config ->
-        //         LogFile.logf "Setting R_HOME as %s" config.RHome
-        //         startInfo.EnvironmentVariables.Add("R_HOME", config.RHome)
-        //     | None ->
-        //         LogFile.logf "Starting server process: Could not find R"
-        //         ()
-
-        // LogFile.logf "R_HOME set as %O" startInfo.EnvironmentVariables.["R_HOME"]
-
         // Start the process and wait until it is initialized
         // (after initialization, the process deletes the temp file)
-        let p = Process.Start(startInfo)
+        let p = Process.Start startInfo
 
-        if not (waitUntilFileDeleted tempFile (20. * 1000.)) then
+        if not (waitUntilFileDeleted tempFile (10. * 1000.)) then
             failwith (
-                "Failed to start the R.NET server within 20 seconds."
+                "Failed to start the R.NET server within ten seconds."
                 + "To enable LogFile set RPROVIDER_LOG to an existing file name."
             )
 
@@ -122,53 +148,32 @@ module RInteropClient =
             p.Exited.Add(fun _ -> lastServer <- None)
 
         LogFile.logf "Attempting to connect via inter-process communication"
-        let rawPipeStream = new NamedPipeClientStream(".", channelName, PipeDirection.InOut, PipeOptions.Asynchronous)
-        let pipeClient = new PipeClient<IRInteropServer>(Serialisation.Settings.NewtonsoftJsonPipeSerializer(), rawPipeStream)
-        LogFile.logf "Made pipe client with state: %A" pipeClient.State
+        let pipeClient =
+            try
+                new RawPipeClient(channelName)
+            with e ->
+                LogFile.logf "RawPipeClient connection failed: %O" e
+                reraise()
 
-        async {
-            LogFile.logf "Attempting to connect pipe client..."
-            pipeClient.SetLogger(fun a -> LogFile.logf "[Client Pipe log]: %O" a)
-            do! pipeClient.ConnectAsync() |> Async.AwaitTask
-            return pipeClient
-        }
+        LogFile.logf "Made pipe client."
+        pipeClient
+
 
     /// Returns an instance of `RInteropServer` started via IPC
     /// in a separate `RProvider.Server.dll` process (or if the server
     /// is already running, returns an existing instance)
-    let getServer () =
-        LogFile.logf "[Get server]"
-
-        lock
-            serverLock
-            (fun () ->
-                LogFile.logf "[Check last server]"
-
-                match lastServer with
-                | Some s ->
-                    LogFile.logf "[Found lastServer]"
-                    s
-                | None ->
-                    LogFile.logf "[Make new server]"
-                    // TODO Remove RunSynchronously
-                    let serverInstance = startNewServerAsync () |> Async.RunSynchronously
-                    lastServer <- Some serverInstance
-                    LogFile.logf "Got some server"
-                    serverInstance)
+    let server : Lazy<RawPipeClient> =
+        lazy
+            LogFile.logf "Starting R server (design-time)..."
+            let s =
+                startNewServer ()
+            LogFile.logf "R server started."
+            s
 
     /// Returns Some("...") when there is an 'expected' kind of error that we want
     /// to show in the IntelliSense in a pleasant way (R is not installed, registry
     /// key is missing or .rprovider.conf is missing)
     let tryGetInitializationError () =
-        try
-            let server = getServer ()
-            LogFile.logf "Sending command: get init error message..."
-            server.InvokeAsync(fun s -> s.InitializationErrorMessage()) |> Async.AwaitTask
+        try server.Value.Call<string> ServerRequest.InitializationErrorMessage
         with
-        | RInitializationException err -> async { return err }
-
-    let withServer f =
-        lock serverLock
-        <| fun () ->
-            let serverInstance = getServer ()
-            f serverInstance
+        | RInitializationException err -> err

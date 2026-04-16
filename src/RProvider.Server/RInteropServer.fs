@@ -26,7 +26,6 @@ module internal EventLoop =
         LogFile.logf "server event loop: starting"
 
         try
-            let initResultValue = Singletons.rLocation.Force()
             let mutable running = true
 
             while running do
@@ -86,7 +85,7 @@ type RInteropServer() =
             // when the event loop starts (so initResult has value now)
             match Singletons.rLocation.Value with
             | None -> "Error: could not locate an R install"
-            | Some _ -> null
+            | Some _ -> ""
 
         member __.GetPackages() = EventLoop.runServerCommandSafe getPackages
 

@@ -1,0 +1,40 @@
+namespace RProvider.DesignTime
+
+open System
+open RProvider.Abstractions
+
+/// A stub layer of runtime functions for use in
+/// design-time quotations.
+type IRInteropRuntime =
+    
+    /// Call an R function by name with named and varargs.
+    static member callFuncByName
+        (env: RExpr)
+        (package: string)
+        (name: string)
+        (namedArgs: RExpr)
+        (varArgs: RExpr)
+        : RExpr =
+        raise (NotImplementedException "Design-time stub")
+
+    static member call
+        (env: RExpr)
+        (package: string)
+        (name: string)
+        (serialized: string)
+        (namedArgs: RExpr)
+        (varArgs: RExpr)
+        : RExpr =
+        raise (NotImplementedException "Design-time stub")
+
+    static member globalEnvironment () : RExpr =
+        raise (NotImplementedException "Design-time stub")
+
+    static member loadRDataFile (fileName: string) : RExpr =
+        raise (NotImplementedException())
+
+    static member getRDataSymbol (envObj: RExpr) (name: string) : RExpr =
+        raise (NotImplementedException "Design-time stub")
+
+    static member getRDataSymbolTyped (envObj: RExpr) (name: string) : obj =
+        raise (NotImplementedException "Design-time stub")

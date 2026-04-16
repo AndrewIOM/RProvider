@@ -5,11 +5,17 @@ open ProviderImplementation.ProvidedTypes
 open Microsoft.FSharp.Core.CompilerServices
 open RProvider
 open RProvider.Common
+open System
+open System.Threading
+open System.IO.Pipes
+open System.IO
+open System.Text
 
 [<TypeProvider>]
 type public RProvider(cfg: TypeProviderConfig) as this =
     inherit TypeProviderForNamespaces(cfg,
         assemblyReplacementMap = [ "RProvider.DesignTime", "RProvider.Runtime" ])
+
 
     let useReflectionOnly = false //true
 
@@ -26,10 +32,11 @@ type public RProvider(cfg: TypeProviderConfig) as this =
     // Generate all the types and log potential errors
     let buildTypes () =
         try
-            LogFile.logf "Starting build types."
+            LogFile.logf "RProvider constructor started"
 
-            // for ns, types in RTypeBuilder.initAndGenerate (runtimeAssembly) do
-            //     this.AddNamespace(ns, types)
+            for ns, types in RTypeBuilder.initAndGenerate  runtimeAssembly do
+                LogFile.logf "[DesignTime] Adding %i types to %s" types.Length ns
+                this.AddNamespace(ns, types)
 
             LogFile.logf "RProvider constructor succeeded"
         with

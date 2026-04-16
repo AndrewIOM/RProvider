@@ -8,7 +8,6 @@
   <ItemGroup>
     <Compile Include="../Common/AssemblyInfo.fs" />
     <Compile Include="../Common/LogFile.fs" />
-    <Compile Include="../Common/RExpr.fs" />
     <Compile Include="Devices.fs" />
     <Compile Include="Logging.fs" />
     <Compile Include="RInstance.fs" />
@@ -17,7 +16,7 @@
     <Compile Include="Converters.fs" />
     <Compile Include="SymbolicExpressionExtensions.fs" />
     <Compile Include="RInterop.fs" />
-    <Compile Include="../Common/IRInteropRuntime.fs" />
+    <Compile Include="IRInteropRuntime.fs" />
     <Compile Include="REnv.fs" />
     <Compile Include="FSIPrinters.fs" />
     <Compile Include="RProviderAttribute.fs" />
@@ -25,6 +24,9 @@
   <ItemGroup>
     <ProjectReference Include="../RProvider.DesignTime/RProvider.DesignTime.fsproj">
       <IsFSharpDesignTimeProvider>true</IsFSharpDesignTimeProvider>
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
+    <ProjectReference Include="../RProvider.Abstractions/RProvider.Abstractions.fsproj">
       <PrivateAssets>all</PrivateAssets>
     </ProjectReference>
   </ItemGroup>
@@ -36,6 +38,9 @@
           Pack="true"
           PackagePath="tools/server/"
           PackageCopyToOutput="true" />
+    <None Include="..\RProvider.Abstractions\bin\$(Configuration)\netstandard2.0\RProvider.Abstractions.dll"
+          Pack="true"
+          PackagePath="lib/$(TargetFramework)/" />
   </ItemGroup>
 
   <Target Name="IncludeServerInPackage" BeforeTargets="Build">

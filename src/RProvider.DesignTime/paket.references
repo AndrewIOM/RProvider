@@ -1,5 +1,3 @@
 FSharp.Core
 FSharp.TypeProviders.SDK
 System.Reflection.MetadataLoadContext
-PipeMethodCalls
-Newtonsoft.Json
