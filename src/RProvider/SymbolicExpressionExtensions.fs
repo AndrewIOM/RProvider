@@ -128,6 +128,16 @@ module SymbolicExpression =
             | _ -> failwith "not implemented"
         | None -> invalidOp "Expression was not a vector"
 
+    let head sexp =
+        if SymbolicExpression.isVector Singletons.engine.Value sexp
+        then typedVectorByIndex 0 sexp
+        else failwith "Symbolic expression was not a vector"
+
+    let tryHead sexp =
+        if SymbolicExpression.isVector Singletons.engine.Value sexp
+        then typedVectorByIndex 0 sexp |> Some
+        else None
+
 
 /// [omit]
 [<AutoOpen>]
@@ -163,10 +173,9 @@ module SymbolicExpressionExtensions =
         member this.ValueAt(index: int) : Runtime.RTypes.RScalar<'u> = SymbolicExpression.typedVectorByIndex index this
 
         /// Get the first value of a vector.
-        member this.First<'a>() = this.ValueAt<'a>(0)
+        member this.Head<'a>() = SymbolicExpression.head this
 
         /// Try and get the first value of a vector, returning
         /// `None` if the `SymbolicExpression` is not a vector
         /// or an empty vector.
-        member this.TryFirst<'a>() = if RBridge.SymbolicExpression.isVector Singletons.engine.Value this then this.ValueAt<'a>(0) |> Some else None
-
+        member this.TryHead<'a>() = SymbolicExpression.tryHead this

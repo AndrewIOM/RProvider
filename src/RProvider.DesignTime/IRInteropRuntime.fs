@@ -33,8 +33,8 @@ type IRInteropRuntime =
     static member loadRDataFile (fileName: string) : RExpr =
         raise (NotImplementedException())
 
-    static member getRDataSymbol (envObj: RExpr) (name: string) : RExpr =
+    static member getRDataSymbol (env: RExpr) (name: string) : RExpr =
         raise (NotImplementedException "Design-time stub")
 
-    static member getRDataSymbolTyped (envObj: RExpr) (name: string) : obj =
+    static member getRDataSymbolTyped (env: RExpr) (name: string) : obj =
         raise (NotImplementedException "Design-time stub")
