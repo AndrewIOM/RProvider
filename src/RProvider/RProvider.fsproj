@@ -8,15 +8,13 @@
   <ItemGroup>
     <Compile Include="../Common/AssemblyInfo.fs" />
     <Compile Include="../Common/LogFile.fs" />
-    <Compile Include="Devices.fs" />
-    <Compile Include="Logging.fs" />
     <Compile Include="RInstance.fs" />
     <Compile Include="Evaluate.fs" />
     <Compile Include="SemanticTypes.fs" />
     <Compile Include="Converters.fs" />
     <Compile Include="SymbolicExpressionExtensions.fs" />
-    <Compile Include="RExprExtensions.fs" />
     <Compile Include="RInterop.fs" />
+    <Compile Include="RExprExtensions.fs" />
     <Compile Include="IRInteropRuntime.fs" />
     <Compile Include="REnv.fs" />
     <Compile Include="FSIPrinters.fs" />
@@ -57,24 +55,6 @@
         SelfContained=false;
         PublishSingleFile=false" />
   </Target>
-
-  <!-- Supporting commands for the test project -->
-  <Target Name="CopyDesignTimeAndServerToRef" AfterTargets="Build">
-    <ItemGroup>
-      <DesignTimeAssemblies Include="../RProvider.DesignTime/bin/$(Configuration)/netstandard2.1/*" />
-    </ItemGroup>
-    <Copy
-      SourceFiles="@(DesignTimeAssemblies)"
-      DestinationFolder="$(IntermediateOutputPath)ref/"
-      SkipUnchangedFiles="true" />
-  </Target>
-  <!-- End test project support -->
-  <!-- <ItemGroup>
-    <ProjectReference Include="../Test/Test.fsproj">
-      <PrivateAssets>all</PrivateAssets>
-      <Pack>true</Pack>
-    </ProjectReference>
-  </ItemGroup> -->
 
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

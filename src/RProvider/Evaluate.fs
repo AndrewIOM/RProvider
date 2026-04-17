@@ -8,28 +8,18 @@ open RProvider.Common
 module internal Evaluate =
 
     let eval (env: REnvironment) (expr: string) =
-        Logging.logWithOutput
-            Singletons.characterDevice
-            (fun () ->
-                LogFile.logf "eval(%s)" expr
-                Evaluate.tryEval expr env Singletons.engine.Value)
+        LogFile.logf "eval(%s)" expr
+        Evaluate.tryEval expr env Singletons.engine.Value
 
     /// Evaluate an expression, setting the result as the specified symbol name.
     let evalTo env (expr: string) (symbol: string) engine =
-        Logging.logWithOutput
-            Singletons.characterDevice
-            (fun () ->
-                LogFile.logf "evalto(%s, %s)" expr symbol
-                Evaluate.tryEval expr env engine
-                |> Result.map(fun v -> Symbol.setSymbol symbol v env engine)
-            )
+        LogFile.logf "evalto(%s, %s)" expr symbol
+        Evaluate.tryEval expr env engine
+        |> Result.map(fun v -> Symbol.setSymbol symbol v env engine)
 
     let exec (env:REnvironment) (expr: string) : Result<unit,string> =
-        Logging.logWithOutput
-            Singletons.characterDevice
-            (fun () ->
-                LogFile.logf "exec(%s)" expr
-                eval env expr |> Result.map(fun _ -> ()))
+        LogFile.logf "exec(%s)" expr
+        eval env expr |> Result.map(fun _ -> ())
 
 
 module internal Call =

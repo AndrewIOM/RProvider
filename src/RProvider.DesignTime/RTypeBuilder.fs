@@ -242,7 +242,7 @@ module internal RTypeBuilder =
                                                 fun _ ->
                                                     <@@
                                                         let globEnv = RProvider.Runtime.IRInteropRuntime.globalEnvironment()
-                                                        RProvider.Runtime.IRInteropRuntime.callFuncByName globEnv package name Array.empty Array.empty @@>
+                                                        RProvider.Runtime.IRInteropRuntime.call globEnv package name serializedRVal Array.empty Array.empty @@>
                                         )
                                         :> MemberInfo ]
                     with ex ->

@@ -15,8 +15,6 @@
     <Compile Include="../Common/IRInteropServer.fs" />
     <Compile Include="../Common/LogFile.fs" />
     <Compile Include="../Common/Serialisation.fs" />
-    <Compile Include="../RProvider/Devices.fs" />
-    <Compile Include="../RProvider/Logging.fs" />
     <Compile Include="../RProvider/RInstance.fs" />
     <Compile Include="../RProvider/Evaluate.fs" />
     <Compile Include="../RProvider/SemanticTypes.fs" />

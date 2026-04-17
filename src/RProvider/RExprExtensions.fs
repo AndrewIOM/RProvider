@@ -81,6 +81,8 @@ module RExpr =
     let head: RExpr -> Runtime.RTypes.RScalar<1> = RExprWrapper.toRBridge >> SymbolicExpression.head
     let tryHead: RExpr -> Runtime.RTypes.RScalar<1> option = RExprWrapper.toRBridge >> SymbolicExpression.tryHead
 
+    let printToString = RExprWrapper.toRBridge >> Runtime.Printing.printUsingTempFile
+
 
 /// [omit]
 /// Public API for accessing RExpr, including converting to
@@ -124,3 +126,5 @@ module RExprExtensions =
         /// `None` if the `RExpr` is not a vector
         /// or an empty vector.
         member this.TryHead<'a>() = (RExprWrapper.toRBridge this).TryHead ()
+
+        member this.Print () = this |> RExpr.printToString

@@ -2,12 +2,10 @@ namespace RProvider.Runtime
 
 open RBridge
 open RProvider.Common
+open RBridge.Logging
 
 /// Global singletons used by RProvider.
 module Singletons =
-
-    /// Global interceptor that captures R console output
-    let mutable internal characterDevice = Devices.Intercept.create Devices.Console.defaultDevice
 
     /// Global variable keeping track of loaded packages in R.
     let internal loadedPackages = System.Collections.Generic.HashSet<string>()
@@ -87,6 +85,10 @@ module Singletons =
         NativeApi.refreshEnvironmentValues engine
         |> NativeApi.Running
 
+    let internal rBridge = {
+        debug = fun s -> LogFile.logf "[RBridge] {Debug} %s" s
+        info = fun s -> LogFile.logf "[RBridge] {Info} %s" s
+    }
 
     /// Lazily initialized R engine.
     let internal engine =
@@ -94,7 +96,7 @@ module Singletons =
             LogFile.logf "engine: Creating and initializing instance (sizeof<IntPtr>=%d)" System.IntPtr.Size
             match rLocation.Force() with
             | Some res ->
-                match initialiseAt res Logging.rBridge with
+                match initialiseAt res rBridge with
                 | NativeApi.Running r -> r
                 | NativeApi.NotRunning err -> failwithf "Error: could not start R; %s" err
             | None -> failwith "Error: could not locate an R install"

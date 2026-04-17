@@ -136,14 +136,19 @@ module Convert =
         // .NET primitives:
         | :? string as s -> Create.stringVector eng [| s |]
         | :? array<string> as xs -> Create.stringVector eng xs
+        | :? list<string> as xs -> Create.stringVector eng xs
         | :? int as i -> Create.intVector eng [| i |]
         | :? array<int> as xs -> Create.intVector eng xs
+        | :? list<int> as xs -> Create.intVector eng xs
         | :? float as f -> Create.realVector eng [| f |]
         | :? array<float> as xs -> Create.realVector eng xs
+        | :? list<float> as xs -> Create.realVector eng xs
         | :? bool as b -> Create.logicalVector eng [| b |]
         | :? array<bool> as xs -> Create.logicalVector eng xs
+        | :? list<bool> as xs -> Create.logicalVector eng xs
         | :? RComplex as c -> Create.complexVector eng [| c.Real, c.Imag |]
         | :? array<RComplex> as cs -> Create.complexVector eng (cs |> Array.map (fun c -> c.Real, c.Imag))
+        | :? list<RComplex> as cs -> Create.complexVector eng (cs |> List.map (fun c -> c.Real, c.Imag))
         // TODO RDate and RDateTime.
 
         // Pass-through of values already in R:
