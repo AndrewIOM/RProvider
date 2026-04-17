@@ -44,6 +44,7 @@ let testScalar (x: 'scalarType) (typeof: RBridge.SymbolicExpression.SexpType) (c
     Expect.equal[| x |] (unbox (sexp.FromR())) ""
     Expect.equal[| x |] (sexp.FromR<'scalarType []>()) ""
 
+[<Tests>]
 let roundTrips =
     testList "Round-trip tests" [
 

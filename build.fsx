@@ -156,7 +156,7 @@ Target.create
 
 
 Target.create
-    "BuildTests"
+    "BuildIntegrationTests"
     (fun _ ->
         Trace.log " --- Building tests --- "
 
@@ -164,10 +164,28 @@ Target.create
             (fun args ->
                 { args with
                       Configuration = DotNet.BuildConfiguration.Release })
-            "tests/Test.RProvider/Test.RProvider.fsproj")
+            "tests/RProvider.IntegrationTests/RProvider.IntegrationTests.fsproj")
 
 // --------------------------------------------------------------------------------------
 // Run the unit tests using test runner & kill test runner when complete
+
+Target.create
+    "RunIntegrationTests"
+    (fun _ ->
+        let rHome = Environment.environVarOrFail "R_HOME"
+        Trace.logf "R_HOME is set as %s" rHome
+
+        let result =
+            DotNet.exec
+                (fun args ->
+                    { args with
+                          Verbosity = Some Fake.DotNet.DotNet.Verbosity.Normal
+                          CustomParams = Some "-c Release" })
+                "test"
+                "tests/RProvider.IntegrationTests/Test.RProvider.fsproj"
+
+        if result.ExitCode <> 0 then
+            failwith "Tests failed")
 
 Target.create
     "RunTests"
@@ -182,58 +200,68 @@ Target.create
                           Verbosity = Some Fake.DotNet.DotNet.Verbosity.Normal
                           CustomParams = Some "-c Release" })
                 "test"
-                "tests/Test.RProvider/Test.RProvider.fsproj"
+                "tests/RProvider.IntegrationTests/Test.RProvider.fsproj"
 
         if result.ExitCode <> 0 then
             failwith "Tests failed")
 
+
 // --------------------------------------------------------------------------------------
 // Build a NuGet package
 
-Target.create
-    "NuGet"
-    (fun _ ->
-        // Format the description to fit on a single line (remove \r\n and double-spaces)
-        let projectDescription =
-            projectDescription
-                .Replace("\r", "")
-                .Replace("\n", "")
-                .Replace("  ", " ")
+let nugetTarget name isLocalTestCopy =
+    Target.create
+        name
+        (fun _ ->
+            // Format the description to fit on a single line (remove \r\n and double-spaces)
+            let projectDescription =
+                projectDescription
+                    .Replace("\r", "")
+                    .Replace("\n", "")
+                    .Replace("  ", " ")
 
-        // Format the release notes
-        let releaseNotes = release.Notes |> String.concat "\n"
+            // Format the release notes
+            let releaseNotes = release.Notes |> String.concat "\n"
 
-        let properties =
-            [ ("Version", release.NugetVersion)
-              ("Authors", authors)
-              ("PackageProjectUrl", packageProjectUrl)
-              ("PackageTags", tags)
-              ("RepositoryType", repositoryType)
-              ("RepositoryUrl", repositoryUrl)
-              ("PackageLicenseExpression", license)
-              ("PackageRequireLicenseAcceptance", "false")
-              ("PackageReleaseNotes", releaseNotes)
-              ("Summary", projectSummary)
-              ("PackageDescription", projectDescription)
-              ("PackageIcon", "logo.png")
-              ("PackageIconUrl", iconUrl)
-              ("EnableSourceLink", "true")
-              ("PublishRepositoryUrl", "true")
-              ("EmbedUntrackedSources", "true")
-              ("IncludeSymbols", "true")
-              ("IncludeSymbols", "false")
-              ("SymbolPackageFormat", "snupkg")
-              ("Copyright", copyright) ]
+            let properties =
+                [
+                    ("Version", if isLocalTestCopy then "0.0.1-local" else release.NugetVersion)
+                    ("Authors", authors)
+                    ("PackageProjectUrl", packageProjectUrl)
+                    ("PackageTags", tags)
+                    ("RepositoryType", repositoryType)
+                    ("RepositoryUrl", repositoryUrl)
+                    ("PackageLicenseExpression", license)
+                    ("PackageRequireLicenseAcceptance", "false")
+                    ("PackageReleaseNotes", releaseNotes)
+                    ("Summary", projectSummary)
+                    ("PackageDescription", projectDescription)
+                    ("PackageIcon", "logo.png")
+                    ("PackageIconUrl", iconUrl)
+                    ("EnableSourceLink", "true")
+                    ("PublishRepositoryUrl", "true")
+                    ("EmbedUntrackedSources", "true")
+                    ("IncludeSymbols", "true")
+                    ("IncludeSymbols", "false")
+                    ("SymbolPackageFormat", "snupkg")
+                    ("Copyright", copyright) ]
 
-        DotNet.pack
-            (fun p ->
-                { p with
-                      Configuration = DotNet.BuildConfiguration.Release
-                      OutputPath = Some "bin"
-                      MSBuildParams =
-                          { p.MSBuildParams with
-                                Properties = properties } })
-            "src/RProvider/RProvider.fsproj")
+            let outPath =
+                if isLocalTestCopy then Some "local-packages"
+                else Some "bin"
+
+            DotNet.pack
+                (fun p ->
+                    { p with
+                        Configuration = DotNet.BuildConfiguration.Release
+                        OutputPath = outPath
+                        MSBuildParams =
+                            { p.MSBuildParams with
+                                    Properties = properties } })
+                "src/RProvider/RProvider.fsproj")
+
+nugetTarget "Nuget" false
+nugetTarget "NugetLocal" true
 
 //--------------------------------------------------------------------------------------
 //Generate the documentation
@@ -290,6 +318,7 @@ Target.create "All" ignore
 
 "Build" ==> "NuGet" ==> "All"
 "Build" ==> "All"
-"Build" ==> "BuildTests" ==> "RunTests" ==> "All"
+"Build" ==> "NugetLocal" ==> "BuildIntegrationTests" ==> "RunIntegrationTests" ==> "All"
+"Build" ==> "RunTests" ==> "All"
 
 Target.runOrDefault "All"

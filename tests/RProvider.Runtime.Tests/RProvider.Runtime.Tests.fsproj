@@ -15,5 +15,14 @@
       <PrivateAssets>all</PrivateAssets>
     </ProjectReference>
   </ItemGroup>
+  <Target Name="CopyServerToRuntimeFolder" BeforeTargets="BeforeBuild">
+    <ItemGroup>
+      <ServerFiles Include="../../src/RProvider.Server/bin/$(Configuration)/net10.0/*/publish/**" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(ServerFiles)"
+      DestinationFiles="@(ServerFiles->'../../src/RProvider/obj/tools/server/%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true" />
+  </Target>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
