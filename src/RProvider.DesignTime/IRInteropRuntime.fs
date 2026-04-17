@@ -1,4 +1,4 @@
-namespace RProvider.DesignTime
+namespace RProvider.Runtime
 
 open System
 open RProvider.Abstractions
@@ -12,8 +12,8 @@ type IRInteropRuntime =
         (env: RExpr)
         (package: string)
         (name: string)
-        (namedArgs: RExpr)
-        (varArgs: RExpr)
+        (namedArgs: (string * obj)[])
+        (varArgs: obj[])
         : RExpr =
         raise (NotImplementedException "Design-time stub")
 
@@ -22,8 +22,8 @@ type IRInteropRuntime =
         (package: string)
         (name: string)
         (serialized: string)
-        (namedArgs: RExpr)
-        (varArgs: RExpr)
+        (namedArgs: (string * obj)[])
+        (varArgs: obj[])
         : RExpr =
         raise (NotImplementedException "Design-time stub")
 

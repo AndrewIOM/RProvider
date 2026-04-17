@@ -14,7 +14,7 @@ open System.Text
 [<TypeProvider>]
 type public RProvider(cfg: TypeProviderConfig) as this =
     inherit TypeProviderForNamespaces(cfg,
-        assemblyReplacementMap = [ "RProvider.DesignTime", "RProvider.Runtime" ])
+        assemblyReplacementMap = [ "RProvider.DesignTime", "RProvider" ])
 
 
     let useReflectionOnly = false //true

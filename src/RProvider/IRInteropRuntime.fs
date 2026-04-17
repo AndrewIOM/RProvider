@@ -13,8 +13,8 @@ type IRInteropRuntime =
         (env: RExpr)
         (package: string)
         (name: string)
-        (namedArgs: RExpr)
-        (varArgs: RExpr)
+        (namedArgs: (string * obj)[])
+        (varArgs: obj[])
         : RExpr =
         LogFile.logf "callFuncByName"
         // Runtime implementation:
@@ -23,11 +23,12 @@ type IRInteropRuntime =
             | :? RBridge.Extensions.REnvironment as e -> e
             | o -> invalidOp $"Expected REnvironment in env RExpr, got {o.GetType().FullName}"
 
-        let named = unwrapNamedArgs namedArgs
-        let vargs = unwrapVarArgs varArgs
+        let named =
+            namedArgs
+            |> Seq.map (fun (k, v) -> Collections.Generic.KeyValuePair(k, v))
 
         let result =
-            RProvider.Runtime.RInterop.callFuncByName rEnv package name named vargs
+            RProvider.Runtime.RInterop.callFuncByName rEnv package name named varArgs
 
         wrap (result :> obj)
 
@@ -36,21 +37,14 @@ type IRInteropRuntime =
         (package: string)
         (name: string)
         (serialized: string)
-        (namedArgs: RExpr)
-        (varArgs: RExpr)
+        (namedArgs: (string * obj)[])
+        (varArgs: obj[])
         : RExpr =
         LogFile.logf "call"
         // Legacy call ignores env and always uses global env.
-        let namedArr =
-            unwrapNamedArgs namedArgs
-            |> Seq.map (fun kv -> kv.Value)
-            |> Seq.toArray
-
-        let vargs = unwrapVarArgs varArgs
-
+        let named = namedArgs |> Seq.map snd |> Seq.toArray
         let result =
-            RProvider.Runtime.RInterop.call package name serialized namedArr vargs
-
+            RProvider.Runtime.RInterop.call package name serialized named varArgs
         wrap (result :> obj)
 
     static member globalEnvironment () : RExpr =

@@ -47,23 +47,6 @@ module internal RTypeBuilder =
             }
         )
 
-    let buildNamedArgsExpr (pairs: (string * Quotations.Expr) list) =
-        let ctor = typeof<Dictionary<string,RExpr>>.GetConstructor [||]
-        let add  = typeof<Dictionary<string,RExpr>>.GetMethod "Add"
-        let dictExpr = Quotations.Expr.NewObject(ctor, [])
-        for name, argExpr in pairs do
-            Quotations.Expr.Call(dictExpr, add,
-                [ Quotations.Expr.Value name; <@@ RExpr.wrap %%argExpr @@> ])
-            |> ignore
-        <@@ RExpr.wrap %%dictExpr @@>
-
-    let buildVarArgsExpr (varArgExpr: Quotations.Expr) =
-        <@@
-            let arr = (%%varArgExpr : obj[]) |> Array.map RExpr.wrap
-            RExpr.wrap arr
-        @@>
-
-
     /// Assuming initialization worked correctly, generate the types using R engine
     let generateTypes ns asm =
             [ // Expose all available packages as namespaces
@@ -138,44 +121,59 @@ module internal RTypeBuilder =
 
                                                     if hasVarArgs then
 
-                                                        let fixedArgs  = args |> List.take (paramCount - 1)
-                                                        let fixedNames = paramList |> List.take (paramCount - 1) |> List.map (fun p -> p.Name)
-                                                        let namedPairs = List.zip fixedNames fixedArgs
-                                                        let varArgsExpr = buildVarArgsExpr args.[paramCount - 1]
+                                                        let namedArgs =
+                                                            Array.sub (Array.ofList args) 0 (paramCount - 1)
+                                                            |> List.ofArray
+
+                                                        let nameValueTuples =
+                                                            (paramList |> List.take (paramCount - 1), namedArgs)
+                                                            ||> List.map2 (fun p argExpr ->
+                                                                Quotations.Expr.NewTuple [
+                                                                    Quotations.Expr.Value p.Name
+                                                                    argExpr 
+                                                                ] )
+
+                                                        let namedArgsArray = Quotations.Expr.NewArray(typeof<string * obj>, nameValueTuples)
+                                                        let varArgs = args.[paramCount - 1]
 
                                                         <@@
-                                                            let namedArgs = %%(buildNamedArgsExpr namedPairs) : RExpr
-                                                            let globEnv = IRInteropRuntime.globalEnvironment()
-                                                            IRInteropRuntime.call
+                                                            // let namedArgs = %%(buildNamedArgsExpr namedPairs) : RExpr
+                                                            let globEnv = RProvider.Runtime.IRInteropRuntime.globalEnvironment()
+                                                            RProvider.Runtime.IRInteropRuntime.callFuncByName
                                                                 globEnv
                                                                 package
                                                                 name
-                                                                serializedRVal
-                                                                namedArgs
-                                                                %%varArgsExpr @@>
+                                                                %%namedArgsArray
+                                                                %%varArgs @@>
                                                     else
                                                         // All args are positional named args
-                                                        let argNames = paramList |> List.map (fun p -> p.Name)
-                                                        let namedPairs = List.zip argNames args
+                                                        let nameValueTuples =
+                                                            (paramList, args)
+                                                            ||> List.map2 (fun p argExpr ->
+                                                                Quotations.Expr.NewTuple [
+                                                                    Quotations.Expr.Value p.Name
+                                                                    argExpr 
+                                                                ] )
 
-                                                        let namedArgsExpr = buildNamedArgsExpr namedPairs
-                                                        let emptyVarArgsExpr = <@@ RExpr.wrap ([||] : RExpr[]) @@>
+                                                        let namedArgsArray = Quotations.Expr.NewArray(typeof<string * obj>, nameValueTuples)
+                                                        let emptyVarArgs = Quotations.Expr.NewArray(typeof<obj>, [])
 
-                                                        <@@ let globEnv = IRInteropRuntime.globalEnvironment()
-                                                            IRInteropRuntime.call
+                                                        <@@ let globEnv = RProvider.Runtime.IRInteropRuntime.globalEnvironment()
+                                                            RProvider.Runtime.IRInteropRuntime.callFuncByName
                                                                 globEnv
                                                                 package
                                                                 name
-                                                                serializedRVal
-                                                                %%namedArgsExpr
-                                                                %%emptyVarArgsExpr @@>
+                                                                %%namedArgsArray
+                                                                %%emptyVarArgs @@>
                                         )
                                     LogFile.logf "Made provided method %A" pm
-                                    pm.AddXmlDocDelayed
-                                        (fun () ->
-                                            match titles.TryFind name with
-                                            | Some docs -> docs
-                                            | None -> "No documentation available")
+                                    
+                                    let addDoc () =
+                                        match titles.TryFind name with
+                                        | Some docs -> docs
+                                        | None -> "No documentation available"
+                                    
+                                    pm.AddXmlDocDelayed addDoc
                                     LogFile.logf "Added XML"
 
                                     yield pm :> MemberInfo                                        
@@ -204,9 +202,11 @@ module internal RTypeBuilder =
                                     let pdm =
                                         byName typeof<IDictionary<string, obj>> (fun argsByName -> 
                                             <@@ let vals : IDictionary<string,obj> = %%argsByName
-                                                let namedArgs = RExprInterop.buildNamedArgsFromDict vals
-                                                let globEnv = IRInteropRuntime.globalEnvironment()
-                                                IRInteropRuntime.callFuncByName globEnv package name namedArgs RExprInterop.emptyVarArgs @@> )
+                                                let namedArgs : (string * obj)[] = vals |> Seq.map (fun kv -> kv.Key, kv.Value) |> Seq.toArray
+                                                let varArgs : obj[] = [||]
+                                                let globEnv = RProvider.Runtime.IRInteropRuntime.globalEnvironment()
+                                                RProvider.Runtime.IRInteropRuntime.callFuncByName globEnv package name namedArgs varArgs @@> )
+                                    pdm.AddXmlDocDelayed addDoc
 
                                     yield pdm :> MemberInfo
 
@@ -223,13 +223,12 @@ module internal RTypeBuilder =
                                                     |> List.filter (fun (_, set) -> set.Length > 1)
 
                                                 if duplicates |> List.isEmpty |> not then failwithf "Recieved duplicate arguments: %A" (duplicates |> List.map fst)
-                                                let pairs =
-                                                    vals |> List.map (fun (k,v) -> k, Quotations.Expr.Value v)
-
-                                                let namedArgs = RExprInterop.buildNamedArgsFromList vals
-                                                let globEnv = IRInteropRuntime.globalEnvironment()
-                                                IRInteropRuntime.callFuncByName globEnv package name namedArgs RExprInterop.emptyVarArgs @@> )
+                                                let namedArgs : (string * obj)[] = vals |> List.toArray
+                                                let varArgs : obj[] = [||]
+                                                let globEnv = RProvider.Runtime.IRInteropRuntime.globalEnvironment()
+                                                RProvider.Runtime.IRInteropRuntime.callFuncByName globEnv package name namedArgs varArgs @@> )
                                                 
+                                    plm.AddXmlDocDelayed addDoc
                                     yield plm :> MemberInfo
 
                                 | RValue.Value ->
@@ -240,10 +239,10 @@ module internal RTypeBuilder =
                                             propertyType = typeof<RExpr>,
                                             isStatic = true,
                                             getterCode =
-                                                fun _ -> <@@
-                                                        let globEnv = IRInteropRuntime.globalEnvironment()
-                                                        IRInteropRuntime.call globEnv package name serializedRVal
-                                                            (RExprInterop.buildNamedArgsFromList []) RExprInterop.emptyVarArgs @@>
+                                                fun _ ->
+                                                    <@@
+                                                        let globEnv = RProvider.Runtime.IRInteropRuntime.globalEnvironment()
+                                                        RProvider.Runtime.IRInteropRuntime.callFuncByName globEnv package name Array.empty Array.empty @@>
                                         )
                                         :> MemberInfo ]
                     with ex ->
