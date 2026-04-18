@@ -16,25 +16,23 @@ module SymbolicExpression =
     let ofObj item = Convert.toR Singletons.engine.Value item
 
     /// Get the type of the expression as an R sexp type
-    let getExprType sexp =
-        SymbolicExpression.getType Singletons.engine.Value sexp
+    let getExprType sexp = SymbolicExpression.getType Singletons.engine.Value sexp
 
     /// <summary> For an S4 object, get a dictionary containing first the
     /// slot name and second the slot's R type. If the expression
     /// is not an S4 object, returns `None`.</summary>
     /// <param name="expr">An R symbolic expression</param>
     /// <returns>A diictionary with key = slot name, and value = R type</returns>
-    let trySlots (expr:SymbolicExpression) =
+    let trySlots (expr: SymbolicExpression) =
         match expr with
-        | S4Object Singletons.engine.Value s4 ->
-            S4.tryGetSlotTypes Singletons.engine.Value s4
+        | S4Object Singletons.engine.Value s4 -> S4.tryGetSlotTypes Singletons.engine.Value s4
         | _ -> None
 
     /// <summary> For an S4 object, get a dictionary containing first the
     /// slot name and second the slot's R type.</summary>
     /// <param name="expr">An R symbolic expression</param>
     /// <returns>A diictionary with key = slot name, and value = R type</returns>
-    let slots (expr:SymbolicExpression) =
+    let slots (expr: SymbolicExpression) =
         match trySlots expr with
         | Some slots -> slots
         | None -> invalidOp "Can only get slots for an S4 object (R type)"
@@ -44,17 +42,16 @@ module SymbolicExpression =
     /// <param name="expr">An R symbolic expression</param>
     /// <returns>Some symbolic expression if the expression was an S4
     /// object and had the slot, or None otherwise.</returns>
-    let trySlot name (expr:SymbolicExpression) = 
+    let trySlot name (expr: SymbolicExpression) =
         match expr with
-        | S4Object Singletons.engine.Value s4 ->
-            S4.tryGetSlot Singletons.engine.Value s4 name
+        | S4Object Singletons.engine.Value s4 -> S4.tryGetSlot Singletons.engine.Value s4 name
         | _ -> None
 
     /// <summary>Gets the value of a slot as a SymbolicExpression</summary>
     /// <param name="name">Slot name to retrieve</param>
     /// <param name="expr">An R symbolic expression</param>
     /// <returns>A symbolic expression containing the slot value</returns>
-    let slot name (expr:SymbolicExpression) = 
+    let slot name (expr: SymbolicExpression) =
         match trySlot name expr with
         | Some slot -> slot
         | None -> invalidOp "Can only get slot for an S4 object (R type)"
@@ -64,7 +61,7 @@ module SymbolicExpression =
     /// <param name="name">The column name</param>
     /// <param name="expr">An R symbolic expression</param>
     /// <returns>A vector containing the data</returns>
-    let column (name:string) (expr:SymbolicExpression) : SymbolicExpression =
+    let column (name: string) (expr: SymbolicExpression) : SymbolicExpression =
         match expr with
         | DataFrame Singletons.engine.Value df ->
             Runtime.RTypes.DataFrame.tryAsFrame df
@@ -84,24 +81,21 @@ module SymbolicExpression =
     /// Pass a value from R memory space into .NET, represented
     /// as a .NET primitive or the closest approximation of the
     /// relevant R primitive.
-    let tryGetValue<'a> sexp =
-        Convert.tryFromRStructural<'a> Singletons.engine.Value sexp
+    let tryGetValue<'a> sexp = Convert.tryFromRStructural<'a> Singletons.engine.Value sexp
 
     let getValue<'a> sexp =
         match tryGetValue<'a> sexp with
         | Some r -> r
         | None -> failwithf "Could not convert R expression to .NET type %s." typeof<'a>.Name
 
-    let tryGetTyped sexp =
-        Convert.tryAsRTyped Singletons.engine.Value sexp
+    let tryGetTyped sexp = Convert.tryAsRTyped Singletons.engine.Value sexp
 
     let getTyped sexp =
         match tryGetTyped sexp with
         | Some r -> r
         | None -> failwith "Could not convert R expression to a semantic type."
 
-    let listItem name sexp =
-        SymbolicExpression.getListItemByName Singletons.engine.Value name sexp
+    let listItem name sexp = SymbolicExpression.getListItemByName Singletons.engine.Value name sexp
 
     let getMember name sexp =
         match sexp with
@@ -112,7 +106,7 @@ module SymbolicExpression =
         | List Singletons.engine.Value l -> listItem name l
         | _ -> invalidOp "Unsupported operation on R object"
 
-    let typedVectorByName (name:string) sexp =
+    let typedVectorByName (name: string) sexp =
         match Runtime.RTypes.GenericVector.tryCreate sexp with
         | Some v ->
             match v with
@@ -120,7 +114,7 @@ module SymbolicExpression =
             | _ -> failwith "not implemented"
         | None -> invalidOp "Expression was not a vector"
 
-    let typedVectorByIndex (index:int) sexp =
+    let typedVectorByIndex (index: int) sexp =
         match Runtime.RTypes.GenericVector.tryCreate sexp with
         | Some v ->
             match v with
@@ -129,35 +123,34 @@ module SymbolicExpression =
         | None -> invalidOp "Expression was not a vector"
 
     let head sexp =
-        if SymbolicExpression.isVector Singletons.engine.Value sexp
-        then typedVectorByIndex 0 sexp
-        else failwith "Symbolic expression was not a vector"
+        if SymbolicExpression.isVector Singletons.engine.Value sexp then
+            typedVectorByIndex 0 sexp
+        else
+            failwith "Symbolic expression was not a vector"
 
     let tryHead sexp =
-        if SymbolicExpression.isVector Singletons.engine.Value sexp
-        then typedVectorByIndex 0 sexp |> Some
-        else None
+        if SymbolicExpression.isVector Singletons.engine.Value sexp then typedVectorByIndex 0 sexp |> Some else None
 
 
 /// [omit]
 [<AutoOpen>]
 module SymbolicExpressionExtensions =
-    
+
     type SymbolicExpression with
-        
+
         member this.Class: string [] = SymbolicExpression.rClass this
-        
-        member this.TryFromR<'a> () = SymbolicExpression.tryGetValue<'a> this
+
+        member this.TryFromR<'a>() = SymbolicExpression.tryGetValue<'a> this
 
         /// Extract the value from R memory space into .NET, with
         /// type 'a.
-        member this.FromR<'a> () = SymbolicExpression.getValue<'a> this
+        member this.FromR<'a>() = SymbolicExpression.getValue<'a> this
 
         /// Get the member symbolic expression of given name.
         member this.Member(name: string) = SymbolicExpression.getMember name this
 
         /// Get the value from the typed vector by name.
-        member this.ValueOf (name: string) : Runtime.RTypes.RScalar<'u> = SymbolicExpression.typedVectorByName name this
+        member this.ValueOf(name: string) : Runtime.RTypes.RScalar<'u> = SymbolicExpression.typedVectorByName name this
 
         /// Represents the R value in an appropriate semantic
         /// R type for further data exploration and analysis, without

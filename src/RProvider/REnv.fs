@@ -16,10 +16,11 @@ type REnv(fileName: string) =
 
     /// Get a value from the R environment as `SymbolicExpression`
     /// (This is equivalent to calling `R.get` function)
-    member _.Get(name: string) = RInterop.callFuncByName env "base" "get" (namedParams [ "x", box name; "envir", box env ]) [||]
+    member _.Get(name: string) =
+        RInterop.callFuncByName env "base" "get" (namedParams [ "x", box name; "envir", box env ]) [||]
 
     /// Returns the keys of all values available in the environment
     /// (This is equivalent to calling `R.ls` function)
-    member _.Keys : string [] =
+    member _.Keys: string [] =
         let ls = RInterop.callFuncByName env "base" "ls" (namedParams [ "envir", box env ]) [||]
-        ls.FromR<string[]>()
+        ls.FromR<string []>()

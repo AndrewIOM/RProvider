@@ -18,13 +18,14 @@ module RInterop =
     type private ResultBuilder() =
         member _.Bind(m, f) = Result.bind f m
         member _.Return(x) = Ok x
-        member _.ReturnFrom(m: Result<_,_>) = m
-        member _.Zero() = Ok ()
-        member _.Delay(f) = f()
+        member _.ReturnFrom(m: Result<_, _>) = m
+        member _.Zero() = Ok()
+        member _.Delay(f) = f ()
 
     let private result = ResultBuilder()
 
-    let private ofOption errMsg = function
+    let private ofOption errMsg =
+        function
         | Some o -> Ok o
         | None -> Error errMsg
 
@@ -32,6 +33,7 @@ module RInterop =
     let getPackages () : string [] =
         LogFile.logf "Communicating with R to get packages"
         let globEnv = REnvironment.globalEnv Singletons.engine.Value
+
         match Evaluate.eval globEnv ".packages(all.available=T)" with
         | Error e ->
             LogFile.logf "Failed to get packages from R: %s" e
@@ -44,6 +46,7 @@ module RInterop =
     /// Get the description for a particular package from R.
     let getPackageDescription packageName : string =
         let globEnv = REnvironment.globalEnv Singletons.engine.Value
+
         Evaluate.eval globEnv (sprintf "packageDescription(\"%s\")$Description" packageName)
         |> Result.bind (SymbolicExpression.tryGetValue >> ofOption "[Could not extract package description]")
         |> Result.defaultValue "[Could not get package description from R]"
@@ -52,14 +55,14 @@ module RInterop =
     /// of each user-facing function.
     let getFunctionDescriptions packageName : (string * string) array =
         let globEnv = REnvironment.globalEnv Singletons.engine.Value
-        
-        let evalStringArray expr : Result<string[],string> =
+
+        let evalStringArray expr : Result<string [], string> =
             Evaluate.eval globEnv expr
             |> Result.bind (SymbolicExpression.tryGetValue >> ofOption "Could not extract to string array")
 
         result {
             do! Evaluate.exec globEnv $"rds <- readRDS(system.file('Meta', 'Rd.rds', package = '{packageName}'))"
-            let! names  = evalStringArray "rds$Name"
+            let! names = evalStringArray "rds$Name"
             let! titles = evalStringArray "rds$Title"
             return Array.zip names titles
         }
@@ -67,18 +70,19 @@ module RInterop =
 
     let loadPackage packageName : unit =
         if not (Singletons.loadedPackages.Contains packageName) then
-            let globalEnv = REnvironment.globalEnv Singletons.engine.Value            
+            let globalEnv = REnvironment.globalEnv Singletons.engine.Value
+
             let result =
                 Evaluate.eval globalEnv ("require(" + packageName + ")")
-                |> Result.defaultWith(fun _ -> failwith "Failed to load package")
+                |> Result.defaultWith (fun _ -> failwith "Failed to load package")
+
             match SymbolicExpression.tryGetValue<bool option> result |> ofOption "Failed to load package" with
             | Error e -> failwith e
             | Ok res ->
                 match res with
-                | Some res ->
-                    if not res then
-                        failwithf "Package %s not installed" packageName
+                | Some res -> if not res then failwithf "Package %s not installed" packageName
                 | None -> failwithf "Loading package %s failed" packageName
+
                 Singletons.loadedPackages.Add packageName |> ignore
 
     /// Determines whether an expression is a value or a function.
@@ -89,16 +93,14 @@ module RInterop =
         | Closure Singletons.engine.Value clos ->
             let names =
                 match Closures.tryFormals Singletons.engine.Value clos with
-                | Some formals ->
-                    formals
-                    |> List.map(fun f -> f.Name)
+                | Some formals -> formals |> List.map (fun f -> f.Name)
                 | None -> []
 
             let hasVarArgs = names |> List.contains "..."
             let args = names |> List.filter ((<>) "...")
             RValue.Function(args, hasVarArgs)
 
-        | ActivePatterns.BuiltinFunction Singletons.engine.Value _ 
+        | ActivePatterns.BuiltinFunction Singletons.engine.Value _
         | ActivePatterns.SpecialFunction Singletons.engine.Value _ ->
             // Don't know how to reflect on builtin or special args so just do as varargs
             RValue.Function([], true)
@@ -109,8 +111,7 @@ module RInterop =
         | IntegerVector Singletons.engine.Value _
         | ComplexVector Singletons.engine.Value _
         | RawVector Singletons.engine.Value _
-        | List Singletons.engine.Value _ ->
-            RValue.Value
+        | List Singletons.engine.Value _ -> RValue.Value
 
         | _ ->
             // LogFile.logf "Ignoring name of unknown SEXP: %A" (SymbolicExpression.print Singletons.engine.Value sexp)
@@ -123,13 +124,9 @@ module RInterop =
     let tryGetValue (engine: NativeApi.RunningEngine) (env: REnvironment) (name: string) =
         let sym = NativeApi.install name engine.Api
 
-        let valuePtr =
-            NativeApi.getVarEx sym env.Pointer false engine.Api.unboundVal engine.Api
+        let valuePtr = NativeApi.getVarEx sym env.Pointer false engine.Api.unboundVal engine.Api
 
-        if valuePtr = engine.Api.unboundVal then
-            None
-        else
-            Some { ptr = valuePtr }
+        if valuePtr = engine.Api.unboundVal then None else Some { ptr = valuePtr }
 
     /// Get bindings representing the named and varargs of
     /// each function in a package.
@@ -144,22 +141,21 @@ module RInterop =
             |> Result.defaultValue [||]
 
         names
-        |> Array.choose (fun name ->
-            match tryGetValue Singletons.engine.Value nsEnv name with
-            | None -> None
-            | Some sexp ->
-                let forced = Promise.force Singletons.engine.Value sexp
-                let info = bindingInfo forced
-                Some (name, serializeRValue info)
-        )
+        |> Array.choose
+            (fun name ->
+                match tryGetValue Singletons.engine.Value nsEnv name with
+                | None -> None
+                | Some sexp ->
+                    let forced = Promise.force Singletons.engine.Value sexp
+                    let info = bindingInfo forced
+                    Some(name, serializeRValue info))
 
-    let globalEnvironment () =
-        REnvironment.globalEnv Singletons.engine.Value
+    let globalEnvironment () = REnvironment.globalEnv Singletons.engine.Value
 
     /// Given an R environment scope, call a function given the
-    /// named and unnamed arguments. 
+    /// named and unnamed arguments.
     let callFunc
-        (rEnv: REnvironment) 
+        (rEnv: REnvironment)
         (fn: SymbolicExpression)
         (argsByName: seq<KeyValuePair<string, obj>>)
         (varArgs: obj [])
@@ -173,10 +169,10 @@ module RInterop =
         (rEnv: REnvironment)
         (packageName: string)
         (funcName: string)
-        (namedArgs: seq<KeyValuePair<string,obj>>)
+        (namedArgs: seq<KeyValuePair<string, obj>>)
         (varArgs: obj array)
         : SymbolicExpression =
-        
+
         Call.callFuncByName Convert.toR rEnv packageName funcName namedArgs varArgs
         |> Result.defaultWith (fun e -> failwithf "Error in function: %s" e)
 
@@ -199,23 +195,19 @@ module RInterop =
 module Printing =
 
     /// Print an R expression in R's console.
-    let internal callPrint (env:REnvironment) (sexp:SymbolicExpression) =
-        RInterop.callFuncByName env "base" "print" [] [| sexp |]
-        |> ignore
+    let internal callPrint (env: REnvironment) (sexp: SymbolicExpression) =
+        RInterop.callFuncByName env "base" "print" [] [| sexp |] |> ignore
 
     /// Sink redirects output from R into a file.
     let callSink (env: REnvironment) (file: string option) =
         match file with
-        | Some path ->
-            RInterop.callFuncByName env "base" "sink" (dict [ "file", box path ]) [||]
-            |> ignore
-        | None ->
-            RInterop.callFuncByName env "base" "sink" [] [||]
-            |> ignore
+        | Some path -> RInterop.callFuncByName env "base" "sink" (dict [ "file", box path ]) [||] |> ignore
+        | None -> RInterop.callFuncByName env "base" "sink" [] [||] |> ignore
 
     /// Print by redirecting the output to a temp file.
-    let internal printUsingTempFile (sexp:SymbolicExpression) =
+    let internal printUsingTempFile (sexp: SymbolicExpression) =
         let temp = System.IO.Path.GetTempFileName()
+
         try
             let env = REnvironment.globalEnv Singletons.engine.Value
             callSink env (Some temp)

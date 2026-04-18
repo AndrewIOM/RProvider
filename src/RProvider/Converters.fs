@@ -12,11 +12,9 @@ module internal RExprWrapper =
 
     open RProvider.Abstractions
 
-    let toRBridge (ex:RExpr) : RBridge.SymbolicExpression =
-        { ptr = (RExpr.unwrap ex).ptr }
+    let toRBridge (ex: RExpr) : RBridge.SymbolicExpression = { ptr = (RExpr.unwrap ex).ptr }
 
-    let toRProvider (ex:RBridge.SymbolicExpression) : RExpr =
-        RExpr.wrap { ptr = ex.ptr }
+    let toRProvider (ex: RBridge.SymbolicExpression) : RExpr = RExpr.wrap { ptr = ex.ptr }
 
 
 /// Contains conversion functions to convert from .NET types
@@ -28,23 +26,21 @@ module Convert =
     /// Default conversions from R to .NET primitive types or
     /// simple .NET representations provided by RBridge (for example,
     /// for RComplex). The values are extracted into .NET memory space.
-    let tryFromRStructural<'outType> (engine : NativeApi.RunningEngine) (sexp : SymbolicExpression) : 'outType option =
-        
+    let tryFromRStructural<'outType> (engine: NativeApi.RunningEngine) (sexp: SymbolicExpression) : 'outType option =
+
         let retype (x: 'b) : Option<'outType> = x |> box |> unbox<'outType> |> Some
         let at = typeof<'outType>
-        
+
         match sexp with
 
         // To array:
-        | IntegerVector engine xs when at = typeof<int[]> ->
-            xs |> Extract.extractIntArray engine |> retype |> unbox
-        | RealVector engine xs when at = typeof<float[]> ->
-            xs |> Extract.extractFloatArray engine |> retype |> unbox
-        | LogicalVector engine xs when at = typeof<bool option[]> ->
+        | IntegerVector engine xs when at = typeof<int []> -> xs |> Extract.extractIntArray engine |> retype |> unbox
+        | RealVector engine xs when at = typeof<float []> -> xs |> Extract.extractFloatArray engine |> retype |> unbox
+        | LogicalVector engine xs when at = typeof<bool option []> ->
             xs |> Extract.extractLogicalArray engine |> retype |> unbox
-        | CharacterVector engine xs when at = typeof<string[]> ->
+        | CharacterVector engine xs when at = typeof<string []> ->
             xs |> Extract.extractStringArray engine |> retype |> unbox
-        | ComplexVector engine xs when at = typeof<RComplex[]> ->
+        | ComplexVector engine xs when at = typeof<RComplex []> ->
             xs |> Extract.extractComplexArray engine |> retype |> unbox
 
         // To list:
@@ -75,11 +71,10 @@ module Convert =
         // To matrix:
         | CharacterMatrix engine v when at = typeof<string [,]> ->
             v |> Extract.extractStringMatrix engine |> retype |> unbox
-        | IntegerMatrix engine v when at = typeof<int [,]> ->
-            v |> Extract.extractIntMatrix engine |> retype |> unbox
+        | IntegerMatrix engine v when at = typeof<int [,]> -> v |> Extract.extractIntMatrix engine |> retype |> unbox
         | LogicalMatrix engine v when at = typeof<bool option [,]> ->
             v |> Extract.extractLogicalMatrix engine |> retype |> unbox
-        
+
         // Empty vectors in R are represented as null
         | Null engine _ when at = typeof<string list> -> retype <| List.empty<string>
         | Null engine _ when at = typeof<string []> -> retype <| Array.empty<string>
@@ -108,9 +103,11 @@ module Convert =
         //     xs |> Array.map (fun seconds -> Create.dateTimeVectorFromSeconds seconds)
 
         | _ ->
-            LogFile.logf "Cannot convert SexpType %A to %s"
+            LogFile.logf
+                "Cannot convert SexpType %A to %s"
                 (SymbolicExpression.getType engine sexp)
                 typeof<'outType>.FullName
+
             None
 
 
@@ -131,19 +128,16 @@ module Convert =
         | IntegerVector engine s
         | LogicalVector engine s
         | CharacterVector engine s
-        | RawVector engine s ->
-            GenericVector.tryCreate s
-            |> Option.map VectorInR
+        | RawVector engine s -> GenericVector.tryCreate s |> Option.map VectorInR
 
         // TODO Assess if full types are covered, e.g. Matrix?
         // - Date and DateTime?
 
         | _ ->
-            LogFile.logf "No typed conversion was possible for sexp: %A"
-                (SymbolicExpression.getType engine sexp)
+            LogFile.logf "No typed conversion was possible for sexp: %A" (SymbolicExpression.getType engine sexp)
             None
 
-    let toR (eng : NativeApi.RunningEngine) (value : obj) : SymbolicExpression =
+    let toR (eng: NativeApi.RunningEngine) (value: obj) : SymbolicExpression =
         match value with
 
         // Pass-through of basic R expression values:

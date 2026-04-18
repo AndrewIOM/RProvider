@@ -12,11 +12,10 @@ module Singletons =
 
     /// Lazily initialized value that, find the R location or fails and returns RInitError
     let rLocation =
-        lazy (
-            None // TODO used to be tryHomeFromConfig (that home root rprovider.config file)
-            |> Option.map EngineHost.tryFromRHome
-            |> Option.defaultWith EngineHost.tryFindSystemR
-        )
+        lazy
+            (None // TODO used to be tryHomeFromConfig (that home root rprovider.config file)
+             |> Option.map EngineHost.tryFromRHome
+             |> Option.defaultWith EngineHost.tryFindSystemR)
 
     open System
 
@@ -30,19 +29,11 @@ module Singletons =
             Environment.SetEnvironmentVariable("R_HOME", loc.RHome)
 
         // ensure the library/bin directory is on PATH
-        let oldPath =
-            Environment.GetEnvironmentVariable "PATH"
+        let oldPath = Environment.GetEnvironmentVariable "PATH"
 
-        let sep =
-            if Environment.OSVersion.Platform = PlatformID.Win32NT then
-                ";"
-            else
-                ":"
+        let sep = if Environment.OSVersion.Platform = PlatformID.Win32NT then ";" else ":"
 
-        let newPath =
-            loc.RBin
-            + sep
-            + (if isNull oldPath then "" else oldPath)
+        let newPath = loc.RBin + sep + (if isNull oldPath then "" else oldPath)
 
         Environment.SetEnvironmentVariable("PATH", newPath)
 
@@ -72,9 +63,9 @@ module Singletons =
         // let savedLocale = Locale.saveLocaleEnv ()
         // logger.debug <| sprintf  "Saved locale: %A" savedLocale
         logger.debug <| sprintf "Culture before restore = %A" System.Globalization.CultureInfo.CurrentCulture
-        logger.debug <| sprintf  "Starting embedded R"
+        logger.debug <| sprintf "Starting embedded R"
         let status = NativeApi.startEmbeddedR args engine
-        logger.debug <| sprintf  "Rf_initEmbeddedR returned %d" status
+        logger.debug <| sprintf "Rf_initEmbeddedR returned %d" status
         logger.debug <| sprintf "Culture after restore = %A" System.Globalization.CultureInfo.CurrentCulture
         // RBridge.RInterop.Locale.setEnvironment savedLocale
 
@@ -82,22 +73,20 @@ module Singletons =
         // previous reads returned 0 because the globals hadn't been set yet.
         logger.debug "refreshing environment values"
 
-        NativeApi.refreshEnvironmentValues engine
-        |> NativeApi.Running
+        NativeApi.refreshEnvironmentValues engine |> NativeApi.Running
 
-    let internal rBridge = {
-        debug = fun s -> LogFile.logf "[RBridge] {Debug} %s" s
-        info = fun s -> LogFile.logf "[RBridge] {Info} %s" s
-    }
+    let internal rBridge =
+        { debug = fun s -> LogFile.logf "[RBridge] {Debug} %s" s
+          info = fun s -> LogFile.logf "[RBridge] {Info} %s" s }
 
     /// Lazily initialized R engine.
     let internal engine =
-        lazy (
-            LogFile.logf "engine: Creating and initializing instance (sizeof<IntPtr>=%d)" System.IntPtr.Size
-            match rLocation.Force() with
-            | Some res ->
-                match initialiseAt res rBridge with
-                | NativeApi.Running r -> r
-                | NativeApi.NotRunning err -> failwithf "Error: could not start R; %s" err
-            | None -> failwith "Error: could not locate an R install"
-        )
+        lazy
+            (LogFile.logf "engine: Creating and initializing instance (sizeof<IntPtr>=%d)" System.IntPtr.Size
+
+             match rLocation.Force() with
+             | Some res ->
+                 match initialiseAt res rBridge with
+                 | NativeApi.Running r -> r
+                 | NativeApi.NotRunning err -> failwithf "Error: could not start R; %s" err
+             | None -> failwith "Error: could not locate an R install")

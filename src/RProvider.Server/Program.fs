@@ -34,43 +34,31 @@ module Main =
     let dispatch (server: IRInteropServer) (req: ServerRequest) : ServerResponse =
         try
             match req with
-            | InitializationErrorMessage ->
-                server.InitializationErrorMessage() |> InitializationErrorMessageResult
+            | InitializationErrorMessage -> server.InitializationErrorMessage() |> InitializationErrorMessageResult
 
-            | GetPackages ->
-                server.GetPackages() |> Packages
+            | GetPackages -> server.GetPackages() |> Packages
 
             | LoadPackage pkg ->
                 server.LoadPackage pkg
                 UnitResult
 
-            | GetBindings pkg ->
-                server.GetBindings pkg |> Bindings
+            | GetBindings pkg -> server.GetBindings pkg |> Bindings
 
-            | GetFunctionDescriptions pkg ->
-                server.GetFunctionDescriptions pkg |> FunctionDescriptions
+            | GetFunctionDescriptions pkg -> server.GetFunctionDescriptions pkg |> FunctionDescriptions
 
-            | GetPackageDescription pkg ->
-                server.GetPackageDescription pkg |> PackageDescription
+            | GetPackageDescription pkg -> server.GetPackageDescription pkg |> PackageDescription
 
-            | GetRDataSymbols path ->
-                server.GetRDataSymbols path |> RDataSymbols
+            | GetRDataSymbols path -> server.GetRDataSymbols path |> RDataSymbols
 
-        with e ->
-            ServerError e.Message
+        with
+        | e -> ServerError e.Message
 
     /// Start the server using the specified channel name (which
     /// contains the parent PID) and delete tempFile once we're running
     let startServer (pipeName: string) tempFile =
 
         let server =
-            new NamedPipeServerStream(
-                pipeName,
-                PipeDirection.InOut,
-                1,
-                PipeTransmissionMode.Byte,
-                PipeOptions.None
-            )
+            new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.None)
 
         // Start parent‑process watcher (same as before)
         let parentPid = pipeName.Split('_').[1] |> int
@@ -96,40 +84,47 @@ module Main =
 
             let impl = RInteropServer() :> IRInteropServer
 
-            let rec loop () = async {
-                let len =
-                    try reader.ReadInt32()
-                    with _ -> 0
+            let rec loop () =
+                async {
+                    let len =
+                        try
+                            reader.ReadInt32()
+                        with
+                        | _ -> 0
 
-                if len = 0 then
-                    LogFile.logf "Server: pipe closed, exiting loop."
-                else
-                    let bytes = reader.ReadBytes len
-                    let req =
-                        use ms = new MemoryStream(bytes)
-                        use br = new BinaryReader(ms, Encoding.UTF8)
-                        Request.read br
-                    LogFile.logf "Server: recieved request %A" req
+                    if len = 0 then
+                        LogFile.logf "Server: pipe closed, exiting loop."
+                    else
+                        let bytes = reader.ReadBytes len
 
-                    let resp = dispatch impl req
-                    LogFile.logf "Server: sending response %A" resp
-                    let respBytes =
-                        use ms = new MemoryStream()
-                        use bw = new BinaryWriter(ms, Encoding.UTF8)
-                        Response.write bw resp
-                        bw.Flush()
-                        ms.ToArray()
+                        let req =
+                            use ms = new MemoryStream(bytes)
+                            use br = new BinaryReader(ms, Encoding.UTF8)
+                            Request.read br
 
-                    writer.Write respBytes.Length
-                    writer.Write respBytes
-                    writer.Flush()
+                        LogFile.logf "Server: recieved request %A" req
 
-                    return! loop ()
-            }
+                        let resp = dispatch impl req
+                        LogFile.logf "Server: sending response %A" resp
+
+                        let respBytes =
+                            use ms = new MemoryStream()
+                            use bw = new BinaryWriter(ms, Encoding.UTF8)
+                            Response.write bw resp
+                            bw.Flush()
+                            ms.ToArray()
+
+                        writer.Write respBytes.Length
+                        writer.Write respBytes
+                        writer.Flush()
+
+                        return! loop ()
+                }
 
             do! loop ()
         }
-        |> Async.StartAsTask |> ignore
+        |> Async.StartAsTask
+        |> ignore
 
         File.Delete tempFile
 
