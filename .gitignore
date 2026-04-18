@@ -11,6 +11,7 @@ docs/output/
 *.userprefs
 .paket/paket.exe
 .fake
+local-packages
 
 #################
 ## Eclipse

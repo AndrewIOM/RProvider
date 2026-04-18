@@ -8,13 +8,7 @@ index: 3
 
 (*** condition: prepare ***)
 #nowarn "211"
-#r "../src/RProvider/bin/Release/net5.0/DynamicInterop.dll"
-#r "../src/RProvider/bin/Release/net5.0/RDotNet.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.Runtime.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.DesignTime.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.dll"
-#r "RProvider.dll"
-#r "RProvider.DesignTime.dll"
+#r "nuget: RProvider, 0.0.1-local"
 (*** condition: fsx ***)
 #if FSX
 #r "nuget: RProvider,{{package-version}}"
@@ -44,10 +38,6 @@ Assuming you installed the R Type Provider in your project from NuGet,
 you can reference the required libraries and packages this way:
 *)
 
-#I "../packages/RProvider.1.0.11"
-#load "RProvider.fsx"
-
-open RDotNet
 open RProvider
 open RProvider.Operators
 

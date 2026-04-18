@@ -57,19 +57,12 @@ let repositoryUrl = "https://github.com/fslaborg/RProvider"
 let repositoryContentUrl =
     "https://raw.githubusercontent.com/fslaborg/RProvider"
 
-let serverRuntimes =
-    [ "win-x64"
-      "osx-x64"
-      "osx-arm64"
-      "linux-x64" ]
-
 // --------------------------------------------------------------------------------------
 // The rest of the code is standard F# build script
 // --------------------------------------------------------------------------------------
 
 // Read release notes & version info from RELEASE_NOTES.md
 System.Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
-let binDir = __SOURCE_DIRECTORY__ @@ "bin"
 
 let release =
     System.IO.File.ReadLines "RELEASE_NOTES.md"
@@ -113,18 +106,6 @@ Target.create
         else
             Trace.logf "Errors while formatting: %A" result.Errors)
 
-Target.create
-    "Format"
-    (fun _ ->
-        let result =
-            sourceFiles
-            |> Seq.map (sprintf "\"%s\"")
-            |> String.concat " "
-            |> DotNet.exec id "fantomas"
-
-        if not result.OK then
-            printfn "Errors while formatting all files: %A" result.Messages)
-
 
 // --------------------------------------------------------------------------------------
 // Clean build results & restore NuGet packages
@@ -154,9 +135,8 @@ Target.create
                       Configuration = DotNet.BuildConfiguration.Release })
             (projectName + ".sln"))
 
-
 Target.create
-    "BuildIntegrationTests"
+    "BuildTests"
     (fun _ ->
         Trace.log " --- Building tests --- "
 
@@ -164,28 +144,10 @@ Target.create
             (fun args ->
                 { args with
                       Configuration = DotNet.BuildConfiguration.Release })
-            "tests/RProvider.IntegrationTests/RProvider.IntegrationTests.fsproj")
+            "tests/RProvider.Tests/RProvider.Tests.fsproj")
 
 // --------------------------------------------------------------------------------------
 // Run the unit tests using test runner & kill test runner when complete
-
-Target.create
-    "RunIntegrationTests"
-    (fun _ ->
-        let rHome = Environment.environVarOrFail "R_HOME"
-        Trace.logf "R_HOME is set as %s" rHome
-
-        let result =
-            DotNet.exec
-                (fun args ->
-                    { args with
-                          Verbosity = Some Fake.DotNet.DotNet.Verbosity.Normal
-                          CustomParams = Some "-c Release" })
-                "test"
-                "tests/RProvider.IntegrationTests/Test.RProvider.fsproj"
-
-        if result.ExitCode <> 0 then
-            failwith "Tests failed")
 
 Target.create
     "RunTests"
@@ -308,6 +270,7 @@ Target.create "All" ignore
 
 "Clean"
 ==> "AssemblyInfo"
+// ==> "CheckFormat"
 ==> "Build"
 
 "Build"
@@ -318,7 +281,7 @@ Target.create "All" ignore
 
 "Build" ==> "NuGet" ==> "All"
 "Build" ==> "All"
-"Build" ==> "NugetLocal" ==> "BuildIntegrationTests" ==> "RunIntegrationTests" ==> "All"
+"Build" ==> "NugetLocal" ==> "BuildTests" ==> "RunTests" ==> "All"
 "Build" ==> "RunTests" ==> "All"
 
 Target.runOrDefault "All"

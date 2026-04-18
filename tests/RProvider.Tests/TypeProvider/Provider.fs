@@ -18,27 +18,24 @@ let printing =
 
     ]
 
-module RoundTrip =
+// module RoundTrip =
 
-    let roundTripAsFactor (value: string []) =
-        let sexp = R.as_factor(x = value)
-        Expect.equal(value, sexp.GetValue<string []>())
+//     let roundTripAsFactor (value: string []) =
+//         let sexp = R.as_factor(x = value)
+//         Expect.equal(value, sexp.FromR<string []>())
 
-    let roundTripAsDataframe (value: string []) =
-        let df =
-            R.data_frame(namedParams [ "Column", value ]).AsDataFrame
-            |> fun df -> Expect.wantSome df "Was not inferred as a data frame"
-        // let col = Runtime.RTypes.DataFrame.getColumn "Column"
-        Expect.equal(value, df.[0].GetValue<string []>())
+//     let roundTripAsDataframe (value: string []) =
+//         let df =
+//             R.data_frame(namedParams [ "Column", value ]).AsDataFrame
+//             |> fun df -> Expect.wantSome df "Was not inferred as a data frame"
+//         // let col = Runtime.RTypes.DataFrame.getColumn "Column"
+//         Expect.equal(value, df.[0].FromR<string []>())
 
-    [<Tests>]
-    let roundTrips =
-        testList "Round trip of non-primitive types" [
+//     [<Tests>]
+//     let roundTrips =
+//         testList "Round trip of non-primitive types" [
 
-
-
-
-        ]
+        // ]
 
 
 let systemLocale = Threading.Thread.CurrentThread.CurrentCulture
@@ -64,3 +61,8 @@ let locales =
             Threading.Thread.CurrentThread.CurrentCulture <- systemLocale
 
     ]
+
+
+[<EntryPoint>]
+let main argv =
+    Tests.runTestsInAssemblyWithCLIArgs [ Sequenced ] argv

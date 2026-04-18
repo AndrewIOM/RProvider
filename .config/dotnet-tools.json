@@ -23,8 +23,8 @@
       ],
       "rollForward": false
     },
-    "fantomas-tool": {
-      "version": "4.5.7",
+    "fantomas": {
+      "version": "7.0.5",
       "commands": [
         "fantomas"
       ],

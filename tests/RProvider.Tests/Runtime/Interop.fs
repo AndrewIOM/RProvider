@@ -70,8 +70,3 @@ let interop =
             Expect.equal value 6. "sum(1,2,3) should be 6"
 
     ]
-
-
-[<EntryPoint>]
-let main argv =
-    Tests.runTestsInAssemblyWithCLIArgs [ Sequenced ] argv
