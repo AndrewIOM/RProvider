@@ -246,26 +246,3 @@ module Helpers =
     ///     |> namedParams |> R.plot
     ///
     let namedParams (s: seq<string * _>) = dict <| Seq.map (fun (n, v) -> n, box v) s
-
-
-/// Custom operators that make composing and working with
-/// R symbolic expressions easier.
-module Operators =
-
-    /// Opens a dynamic property of an R symbolic expression.
-    /// Supports named lists, S4 objects, and dataframes.
-    /// If a dataframe, the column is extracted by name.
-    let op_Dynamic (expr:SymbolicExpression, mem:string) =
-        try
-            match expr with
-            | ActivePatterns.S4Object Singletons.engine.Value s4 ->
-                SymbolicExpression.trySlot mem s4 |> Option.get
-            | ActivePatterns.DataFrame Singletons.engine.Value _ ->
-                SymbolicExpression.column mem expr
-            | _ -> expr.Member mem
-        with 
-        | :? System.ArgumentOutOfRangeException -> { ptr = Singletons.engine.Value.Api.nilValue }
-
-    /// When calling an R function, use the => operator in a list
-    /// to set a parameter: [ "someparam" => 2 ]
-    let (=>) (key:string) (value:'a) = (key, box value)

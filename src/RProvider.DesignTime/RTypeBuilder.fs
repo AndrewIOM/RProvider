@@ -137,13 +137,16 @@ module internal RTypeBuilder =
                                                         let varArgs = args.[paramCount - 1]
 
                                                         <@@
-                                                            // let namedArgs = %%(buildNamedArgsExpr namedPairs) : RExpr
+                                                            let named = %%namedArgsArray : array<string * obj>
+                                                            let filteredNamedArgs =
+                                                                named
+                                                                |> Array.filter(fun (n,o) -> isNull o |> not )
                                                             let globEnv = RProvider.Runtime.IRInteropRuntime.globalEnvironment()
                                                             RProvider.Runtime.IRInteropRuntime.callFuncByName
                                                                 globEnv
                                                                 package
                                                                 name
-                                                                %%namedArgsArray
+                                                                filteredNamedArgs
                                                                 %%varArgs @@>
                                                     else
                                                         // All args are positional named args
@@ -159,11 +162,16 @@ module internal RTypeBuilder =
                                                         let emptyVarArgs = Quotations.Expr.NewArray(typeof<obj>, [])
 
                                                         <@@ let globEnv = RProvider.Runtime.IRInteropRuntime.globalEnvironment()
+                                                            let named = %%namedArgsArray : array<string * obj>
+                                                            let filteredNamedArgs =
+                                                                named
+                                                                |> Array.filter(fun (n,o) -> isNull o |> not )
+
                                                             RProvider.Runtime.IRInteropRuntime.callFuncByName
                                                                 globEnv
                                                                 package
                                                                 name
-                                                                %%namedArgsArray
+                                                                filteredNamedArgs
                                                                 %%emptyVarArgs @@>
                                         )
                                     LogFile.logf "Made provided method %A" pm

@@ -125,7 +125,6 @@ module RTypes =
         with
             member this.RExp = this.Sexp
 
-
         let createFrame (cols: (string * SymbolicExpression) array) =
             failwith "TODO"
             // let sexps = cols |> Array.map snd
@@ -164,6 +163,10 @@ module RTypes =
 
         let getColumn name engine frame =
             failwith "not implemented"
+
+        type RFrame with
+            member this.Columns = getColumnNames Singletons.engine.Value this
+
 
     module Factor =
 

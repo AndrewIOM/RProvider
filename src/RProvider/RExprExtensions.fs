@@ -1,17 +1,7 @@
 namespace RProvider
 
 open RProvider.Abstractions
-
-/// Convert between user-facing RExpr and the internal
-/// RBridge symbolic expression type.
-module internal RExprWrapper =
-
-    let toRBridge (ex:RExpr) : RBridge.SymbolicExpression =
-        { ptr = (RExpr.unwrap ex).ptr }
-
-    let toRProvider (ex:RBridge.SymbolicExpression) : RExpr =
-        RExpr.wrap { ptr = ex.ptr }
-
+open RProvider.Runtime
 
 /// Functions for working with R expressions.
 [<RequireQualifiedAccess>]

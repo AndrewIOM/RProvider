@@ -18,7 +18,7 @@ type IRInteropRuntime =
         : RExpr =
         LogFile.logf "callFuncByName"
         // Runtime implementation:
-        let rEnvExpr = RProvider.RExprWrapper.toRBridge env
+        let rEnvExpr = RExprWrapper.toRBridge env
         let rEnv = 
             match RBridge.Extensions.REnvironment.ofSExp Singletons.engine.Value rEnvExpr with
             | Some e -> e
@@ -31,7 +31,7 @@ type IRInteropRuntime =
         let result =
             RProvider.Runtime.RInterop.callFuncByName rEnv package name named varArgs
 
-        result |> RProvider.RExprWrapper.toRProvider
+        result |> RExprWrapper.toRProvider
 
     static member call
         (env: RExpr)
@@ -46,13 +46,13 @@ type IRInteropRuntime =
         let named = namedArgs |> Seq.map snd |> Seq.toArray
         let result =
             RProvider.Runtime.RInterop.call package name serialized named varArgs
-        result |> RProvider.RExprWrapper.toRProvider
+        result |> RExprWrapper.toRProvider
 
     static member globalEnvironment () : RExpr =
         LogFile.logf "globalEnvironment"
         let env = RProvider.Runtime.RInterop.globalEnvironment ()
         let sexp: RBridge.SymbolicExpression = { ptr = env.Pointer }
-        sexp |> RProvider.RExprWrapper.toRProvider
+        sexp |> RExprWrapper.toRProvider
 
     static member loadRDataFile (fileName: string) : RExpr =
         LogFile.logf "loadRDataFile"
@@ -60,7 +60,7 @@ type IRInteropRuntime =
 
     static member getRDataSymbol (env: RExpr) (name: string) : RExpr =
         LogFile.logf "getRDataSymbol"
-        let rEnvExpr = RProvider.RExprWrapper.toRBridge env
+        let rEnvExpr = RExprWrapper.toRBridge env
         let rEnv = 
             match RBridge.Extensions.REnvironment.ofSExp Singletons.engine.Value rEnvExpr with
             | Some e -> e
@@ -72,7 +72,7 @@ type IRInteropRuntime =
 
     static member getRDataSymbolTyped (env: RExpr) (name: string) : obj =
         LogFile.logf "getRDataSymbolTyped"
-        let rEnvExpr = RProvider.RExprWrapper.toRBridge env
+        let rEnvExpr = RExprWrapper.toRBridge env
         let rEnv = 
             match RBridge.Extensions.REnvironment.ofSExp Singletons.engine.Value rEnvExpr with
             | Some e -> e

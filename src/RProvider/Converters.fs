@@ -6,6 +6,19 @@ open RBridge.Extensions.ActivePatterns
 open RProvider.Runtime.RTypes
 open RProvider.Common
 
+/// Convert between user-facing RExpr and the internal
+/// RBridge symbolic expression type.
+module internal RExprWrapper =
+
+    open RProvider.Abstractions
+
+    let toRBridge (ex:RExpr) : RBridge.SymbolicExpression =
+        { ptr = (RExpr.unwrap ex).ptr }
+
+    let toRProvider (ex:RBridge.SymbolicExpression) : RExpr =
+        RExpr.wrap { ptr = ex.ptr }
+
+
 /// Contains conversion functions to convert from .NET types
 /// to values in R, and from R to .NET types. Functions allow
 /// extraction of R data to .NET memory, or expression of R objects
@@ -133,7 +146,12 @@ module Convert =
     let toR (eng : NativeApi.RunningEngine) (value : obj) : SymbolicExpression =
         match value with
 
+        // Pass-through of basic R expression values:
+        | :? SymbolicExpression as s -> s
+        | :? RProvider.Abstractions.RExpr as s -> RExprWrapper.toRBridge s
+
         // .NET primitives:
+        | null -> { ptr = eng.Api.nilValue }
         | :? string as s -> Create.stringVector eng [| s |]
         | :? array<string> as xs -> Create.stringVector eng xs
         | :? list<string> as xs -> Create.stringVector eng xs
@@ -151,8 +169,7 @@ module Convert =
         | :? list<RComplex> as cs -> Create.complexVector eng (cs |> List.map (fun c -> c.Real, c.Imag))
         // TODO RDate and RDateTime.
 
-        // Pass-through of values already in R:
-        | :? SymbolicExpression as s -> s
+        // Pass-through of R semantic types:
         | :? Factor.RFactor as f -> f.Sexp
         | :? Real.Vector.RRealVector<_> as v -> v.Inner.Sexp
         // | :? RVector.ComplexV v -> v.Inner.Sexp
@@ -164,231 +181,11 @@ module Convert =
         | :? DataFrame.RFrame as df -> df.RExp
 
         | _ ->
-            failwithf "Cannot convert .NET value of type %s to R"
-                (value.GetType().FullName)
-
-
-// /// This type can be used for providing new converters that can convert
-// /// custom .NET data types to R values. The converter is used whenever the
-// /// user calls an R function (such as `R.foo(...)`) with an arguments that
-// /// is of type `TInType`.
-// type ToRConverter =
-//     { Convert : NativeApi.RunningEngine -> obj -> SymbolicExpression }
-
-// /// This type can be used for providing new converters that can convert
-// /// R values to .NET types. The converter is used whenever the users calls the
-// /// `se.GetValue<'TOutType>()` on a `SymbolicExpression` value returned from R
-// /// provider.
-// type FromRConverter<'TOutType> =
-//     { ConvertFrom: SymbolicExpression -> Option<'TOutType> }
-
-// /// Represents a function that converts a specific R shape into
-// /// a .NET object of an appropriate type.
-// type RShapeToDotNet = NativeApi.RunningEngine -> SymbolicExpression -> obj option
-
-// /// A central representation of possible type conversion to and
-// /// from R values.
-// type ConverterRegistry =
-//     { ToR : IReadOnlyDictionary<Type, ToRConverter>
-//       FromR: IReadOnlyDictionary<SymbolicExpression.SexpType, RShapeToDotNet> }
-
-// /// Functions to create and manage a .NET <-> R conversion registry.
-// module Registry =
-
-//     /// Add a function that will convert from a specific type to a value in R to
-//     /// an existing converter registry.
-//     let registerToR<'T> conv (reg : ConverterRegistry) =
-//         let dict = Dictionary reg.ToR
-//         let wrapper =
-//             { Convert = fun eng (o: obj) -> conv eng (unbox<'T> o) }
-//         let t = typeof<'T>
-
-//         dict.[t] <- wrapper
-//         { reg with ToR = dict }
-
-//     /// Add a function that will convert from a specific R value or class to a .NET
-//     /// type into an existing container registry.
-//     let registerFromR sexpType conv registry =
-//         let dict = Dictionary registry.FromR
-//         dict.[sexpType] <- conv
-//         { registry with FromR = dict }
-
-//     /// Convert an R expression into 'T. Fails if no converter function
-//     /// for 'T in the registry.
-//     let convertFromR<'T> registry engine sexp : 'T =
-//         let sexpType = SymbolicExpression.getType engine sexp
-//         match registry.FromR.TryGetValue sexpType with
-//         | true, conv ->
-//             match conv engine sexp with
-//             | Some o ->
-//                 match o with
-//                 | :? 'T as t -> t
-//                 | _ -> failwithf "Conversion registry returned wrong type for %s" typeof<'T>.FullName
-//             | None -> failwithf "Conversion registry could not convert R type %A to %s" sexpType typeof<'T>.FullName
-//         | _ -> failwithf "No converter registered for R type %A" sexpType
-
-//     let convertFromRToObj registry eng sexp =
-//         let sexpType = SymbolicExpression.getType eng sexp
-//         match registry.FromR.TryGetValue sexpType with
-//         | true, conv -> conv eng sexp
-//         | _ -> None
-
-//     let defaultConvertFromR converters =
-//         converters
-//         |> registerFromR SymbolicExpression.IntegerVector factorVectorConverter
-//         |> registerFromR<string>   factorScalarConverter
-
-//     /// A container of basic converters of .NET -> R values.
-//     let internal defaultConvertToR registry =
-//         registry
-//         |> registerToR<SymbolicExpression> (fun _ v -> v)
-//         |> registerToR<string> (fun eng v -> Create.createStringVector eng [| v |])
-//         |> registerToR<int> (fun eng v -> Create.createIntVector eng [| v |])
-//         |> registerToR<double> (fun eng v -> Create.createDoubleVector eng [| v |])
-//         |> registerToR<DateTime> (fun eng v -> Create.createDateVector eng [ v ])
-//         |> registerToR<string seq> (fun eng v -> Create.createStringVector eng (Seq.toArray v))
-//         |> registerToR<double seq> (fun eng v -> Create.createDoubleVector eng (Seq.toArray v))
-//         |> registerToR<DateTime seq> (fun eng v -> Create.createDateVector eng v)
-//         |> registerToR<double[,]> (fun eng v -> Create.createDoubleMatrix eng v)
-// //         registerToR<Complex> (fun engine v -> upcast engine.CreateComplexVector [| v |])
-// //         registerToR<bool> (fun engine v -> upcast engine.CreateLogicalVector [| v |])
-// //         registerToR<byte> (fun engine v -> upcast engine.CreateRawVector [| v |])
-// //         registerToR<Complex seq> (fun engine v -> upcast engine.CreateComplexVector v)
-// //         registerToR<int seq> (fun engine v -> upcast engine.CreateIntegerVector v)
-// //         registerToR<bool seq> (fun engine v -> upcast engine.CreateLogicalVector v)
-// //         registerToR<byte seq> (fun engine v -> upcast engine.CreateRawVector v)
-// //         registerToR<string [,]> (fun engine v -> upcast engine.CreateCharacterMatrix v)
-// //         registerToR<Complex [,]> (fun engine v -> upcast engine.CreateComplexMatrix v)
-// //         registerToR<int [,]> (fun engine v -> upcast engine.CreateIntegerMatrix v)
-// //         registerToR<bool [,]> (fun engine v -> upcast engine.CreateLogicalMatrix v)
-// //         registerToR<byte [,]> (fun engine v -> upcast engine.CreateRawMatrix v)
-
-//     let defaultRegistry =
-//         { FromR = Dictionary<Type, obj>(); ToR = Dictionary<Type, ToRConverter>() }
-//         |> defaultConvertFromR
-//         |> defaultConvertToR
-
-
-
-//     // let internal defaultConvertFromRBuiltins engine (sexp: SymbolicExpression) : Option<obj> =
-//     //     let wrap x = box x |> Some
-
-//     //     match sexp with
-//     //     | CharacterVector engine v -> wrap <| v
-//     //     // | ComplexVector (v) -> wrap <| v.InnerToArray()
-//     //     // | IntegerVector (v) -> wrap <| v.ToArray()
-//     //     // | LogicalVector (v) -> wrap <| v.ToArray()
-//     //     // | NumericVector (v) ->
-//     //     //     match v.GetAttribute("class") with
-//     //     //     | CharacterVector (cv) when cv.ToArray() = [| "Date" |] ->
-//     //     //         wrap <| [| for n in v -> DateTime.FromOADate(n + RDateOffset) |]
-//     //     //     | _ -> wrap <| v.ToArray()
-//     //     // | CharacterMatrix (v) -> wrap <| v.ToArray()
-//     //     // | ComplexMatrix (v) -> wrap <| v.ToArray()
-//     //     // | IntegerMatrix (v) -> wrap <| v.ToArray()
-//     //     // | LogicalMatrix (v) -> wrap <| v.ToArray()
-//     //     // | NumericMatrix (v) -> wrap <| v.ToArray()
-//     //     // | List (v) -> wrap <| v
-//     //     // | Pairlist (pl) -> wrap <| (pl |> Seq.map (fun sym -> sym.PrintName, sym.AsSymbol().Value))
-//     //     // | Null () -> wrap <| null
-//     //     // | Symbol (s) -> wrap <| (s.PrintName, s.Value)
-//     //     | _ -> None
-
-
-// module BuiltIn =
-
-//     /// Contains higher-level converters
-//     /// [omit]
-//     module Factor =
-
-//         let getLevels sexp =
-//             let rvalStr = RInterop.serializeRValue (RValue.Function([ "x" ], false))
-//             let symexpr = RInterop.call "base" "levels" rvalStr [| sexp |] [||]
-//             symexpr.AsCharacter().ToArray()
-
-//         let factorFromR : RShapeToDotNet =
-//             fun eng sexp ->
-//                 if Extract.isFactor eng sexp then
-//                     let levels = Factor.getLevels eng sexp
-//                     let ints = Extract.extractIntArray eng sexp
-//                     Some (Array.map (fun i -> levels.[i - 1]) ints :> obj)
-//                 else None
-
-//     module DataFrame =
-
-//         // [<Export(typeof<IConvertFromR<string>>)>]
-//         // type DataFrameConverter() =
-//         //     interface IConvertFromR<string> with
-//         //         member this.Convert(sexp: SymbolicExpression) =
-//         //             match sexp with
-//         //             | IntegerVector (nv) when sexp.Class = [| "factor" |] && nv.Length = 1 ->
-//         //                 Some <| getLevels(sexp).[nv.[0]]
-//         //             | _ -> None
-
-//         let frameFromR engine = function
-//             | ActivePatterns.DataFrame engine df ->
-//                 Some df
-//             | _ -> None
-
-
-//     // /// Convert an R value to a .NET value of the specified outType.
-//     // /// Does not include complex R types, such as closures, but only
-//     // /// basic numeric and character types.
-//     // let internal convertFromRBuiltins<'outType> engine (sexp: SymbolicExpression) : Option<'outType> =
-//     //     let retype (x: 'b) : Option<'a> = x |> box |> unbox |> Some
-//     //     let at = typeof<'outType>
-
-//     //     match sexp with
-//     //     | CharacterVector engine v when at = typeof<string list> -> retype <| List.ofSeq v
-//     //     | CharacterVector engine v when at = typeof<string []> -> retype <| v
-//     //     | CharacterVector engine v when at = typeof<string> -> retype <| Array.head v
-//     //     | RealVector engine v when at = typeof<float list> -> retype <| List.ofSeq v
-//     //     | RealVector engine v when at = typeof<float []> -> retype <| v
-//     //     | RealVector engine v when at = typeof<float> -> retype <| Array.head v
-//     //     | IntegerVector engine v when at = typeof<int list> -> retype <| List.ofSeq v
-//     //     | IntegerVector engine v when at = typeof<int []> -> retype <| v
-//     //     | IntegerVector engine v when at = typeof<int> -> retype <| Array.head v
-//     //     | LogicalVector engine v when at = typeof<bool list> -> retype <| List.ofSeq v
-//     //     | LogicalVector engine v when at = typeof<bool []> -> retype <| v
-//     //     | LogicalVector engine v when at = typeof<bool> -> retype <| Array.head v
-//     //     | CharacterMatrix engine v when at = typeof<string [,]> -> retype <| v.ToArray()
-//     //     | IntegerMatrix engine v when at = typeof<int [,]> -> retype <| v.ToArray()
-//     //     | LogicalMatrix engine v when at = typeof<int [,]> -> retype <| v.ToArray()
-//     //     // Empty vectors in R are represented as null
-//     //     | Null () when at = typeof<string list> -> retype <| List.empty<string>
-//     //     | Null () when at = typeof<string []> -> retype <| Array.empty<string>
-//     //     | Null () when at = typeof<RComplex list> -> retype <| List.empty<RComplex>
-//     //     | Null () when at = typeof<RComplex []> -> retype <| Array.empty<RComplex>
-//     //     | Null () when at = typeof<int list> -> retype <| List.empty<int>
-//     //     | Null () when at = typeof<int []> -> retype <| Array.empty<int>
-//     //     | Null () when at = typeof<bool list> -> retype <| List.empty<bool>
-//     //     | Null () when at = typeof<bool []> -> retype <| Array.empty<bool>
-//     //     | Null () when at = typeof<double list> -> retype <| List.empty<double>
-//     //     | Null () when at = typeof<double []> -> retype <| Array.empty<double>
-//     //     | Null () when at = typeof<DateTime list> -> retype <| List.empty<DateTime>
-//     //     | Null () when at = typeof<DateTime []> -> retype <| Array.empty<DateTime>
-
-//     //     | _ -> None
-
-//     // let internal convertFromR<'outType> engine (sexp: SymbolicExpression) : 'outType =
-//     //     let concreteType = typeof<'outType>
-//     //     match convertFromRBuiltins<'outType> engine sexp with
-//     //     | Some res -> res
-//     //     | _ ->
-//     //         failwithf
-//     //             "No converter registered to convert from R %A to .NET type %s"
-//     //             (SymbolicExpression.getType engine sexp)
-//     //             concreteType.FullName
-
-//     // let internal defaultConvertFromR engine (sexp: SymbolicExpression) : obj =
-//     //     Logging.logf "Converting value from R..."
-//     //     let converters = mefContainer.Value.GetExports<IDefaultConvertFromR>()
-
-//     //     match converters |> Seq.tryPick (fun conv -> conv.Value.Convert sexp) with
-//     //     | Some res -> res
-//     //     | None ->
-//     //         match defaultConvertFromRBuiltins engine sexp with
-//     //         | Some res -> res
-//     //         | _ -> failwithf "No default converter registered from R %A." (SymbolicExpression.getType engine sexp)
-
-
+            failwithf
+                "The value you passed cannot be converted to an R object.\n\
+                Type: %s\n\
+                Value: %A\n\
+                Hint: RProvider only supports built-in conversion of primitive types, arrays, and lists.\n\
+                Tuples of length > 2 are not automatically converted. Consider converting it manually. Note: F# lists are seperated with semi-colons, not commas."
+                (value.GetType().Name)
+                value
