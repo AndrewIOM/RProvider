@@ -10,4 +10,7 @@ module FSIPrinters =
 
     /// Print any `SymbolicExpression` using R's built-in
     /// `print` function.
-    let rValue = RExprWrapper.toRBridge >> Printing.printUsingTempFile
+    let rValue (expr: Abstractions.RExpr) =
+        let header = sprintf "R semantic type <%A>" expr.Type
+        let body = expr |> RExprWrapper.toRBridge |> Printing.printUsingTempFile
+        header + "\n\n" + body

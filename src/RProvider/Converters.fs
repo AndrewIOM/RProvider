@@ -110,32 +110,27 @@ module Convert =
 
             None
 
-
     /// Convert a value from a symbolic expression into a wrapped
     /// R type included in RProvider. The types are shaped so as to
     /// be usable directly by statistics libraries that support them,
     /// without the need for a plugin converter system.
     /// Conversion between basic numeric types and containers (e.g.
     /// data frame) should be done using explicit conversion functions.
-    let tryAsRTyped engine sexp : RProvider.Runtime.RTypes.RSemantic<'u> option =
-
-        match sexp with
-        | Factor engine f -> Factor.tryFromExpr f |> Option.map FactorInR
-        | DataFrame engine df -> DataFrame.tryAsFrame df |> Option.map DataFrameInR
-
-        | RealVector engine s
-        | ComplexVector engine s
-        | IntegerVector engine s
-        | LogicalVector engine s
-        | CharacterVector engine s
-        | RawVector engine s -> GenericVector.tryCreate s |> Option.map VectorInR
-
-        // TODO Assess if full types are covered, e.g. Matrix?
-        // - Date and DateTime?
-
-        | _ ->
-            LogFile.logf "No typed conversion was possible for sexp: %A" (SymbolicExpression.getType engine sexp)
-            None
+    let tryAsRTyped engine sexp : RTypes.RSemantic<'u> option =
+        LogFile.logf "Classified as %A" (classify engine sexp)
+        match classify engine sexp with
+        | FactorType -> Factor.tryOfExpr sexp |> Option.map FactorInR
+        | DataFrameType -> DataFrame.tryOfExpr sexp |> Option.map DataFrameInR
+        | VectorType -> GenericVector.tryCreate sexp |> Option.map VectorInR        
+        | ScalarType
+        | ListType
+        | MatrixType
+        | ArrayType
+        | FunctionType
+        | EnvironmentType
+        | S3ObjectType
+        | S4ObjectType
+        | R6ObjectType -> None
 
     let toR (eng: NativeApi.RunningEngine) (value: obj) : SymbolicExpression =
         match value with
@@ -158,9 +153,9 @@ module Convert =
         | :? bool as b -> Create.logicalVector eng [| b |]
         | :? array<bool> as xs -> Create.logicalVector eng xs
         | :? list<bool> as xs -> Create.logicalVector eng xs
-        | :? RComplex as c -> Create.complexVector eng [| c.Real, c.Imag |]
-        | :? array<RComplex> as cs -> Create.complexVector eng (cs |> Array.map (fun c -> c.Real, c.Imag))
-        | :? list<RComplex> as cs -> Create.complexVector eng (cs |> List.map (fun c -> c.Real, c.Imag))
+        | :? RComplex as c -> Create.complexVector eng [| c |]
+        | :? array<RComplex> as cs -> Create.complexVector eng cs
+        | :? list<RComplex> as cs -> Create.complexVector eng cs
         // TODO RDate and RDateTime.
 
         // Pass-through of R semantic types:

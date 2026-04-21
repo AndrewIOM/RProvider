@@ -53,10 +53,12 @@ module RExpr =
 
     let getValue<'a> = RExprWrapper.toRBridge >> SymbolicExpression.getValue<'a>
 
-    let tryGetTyped: RExpr -> Runtime.RTypes.RSemantic<1> option =
+    let tryGetTyped: RExpr -> RTypes.RSemantic<1> option =
         RExprWrapper.toRBridge >> SymbolicExpression.tryGetTyped
 
-    let getTyped: RExpr -> Runtime.RTypes.RSemantic<1> = RExprWrapper.toRBridge >> SymbolicExpression.getTyped
+    let getTyped: RExpr -> RTypes.RSemantic<1> = RExprWrapper.toRBridge >> SymbolicExpression.getTyped
+
+    let getType: RExpr -> RTypes.RSemanticType = RExprWrapper.toRBridge >> SymbolicExpression.semanticType
 
     let listItem name expr =
         expr |> RExprWrapper.toRBridge |> SymbolicExpression.listItem name |> RExprWrapper.toRProvider
@@ -76,7 +78,6 @@ module RExpr =
     let printToString = RExprWrapper.toRBridge >> Runtime.Printing.printUsingTempFile
 
 
-/// [omit]
 /// Public API for accessing RExpr, including converting to
 /// R semantic types, .NET types, and extracting key metadata.
 [<AutoOpen>]
@@ -84,42 +85,59 @@ module RExprExtensions =
 
     type RExpr with
 
-        member this.Class: string [] = SymbolicExpression.rClass (RExprWrapper.toRBridge this)
+        member this.Class: string [] = RExpr.classes this
+        member this.Type : RTypes.RSemanticType = RExpr.getType this
 
-        member this.TryFromR<'a>() = SymbolicExpression.tryGetValue<'a> (RExprWrapper.toRBridge this)
+        member this.TryFromR<'a>() = RExpr.tryGetValue<'a> this
 
         /// Extract the value from R memory space into .NET, with
         /// type 'a.
-        member this.FromR<'a>() = SymbolicExpression.getValue<'a> (RExprWrapper.toRBridge this)
+        member this.FromR<'a>() = RExpr.getValue<'a> this
 
         /// Get the member symbolic expression of given name.
-        member this.Member(name: string) =
-            SymbolicExpression.getMember name (RExprWrapper.toRBridge this) |> RExprWrapper.toRProvider
+        member this.Member(name: string) = RExpr.getMember name this
 
         /// Get the value from the typed vector by name.
-        member this.ValueOf(name: string) : Runtime.RTypes.RScalar<'u> =
-            SymbolicExpression.typedVectorByName name (RExprWrapper.toRBridge this)
+        member this.ValueOf(name: string) : RTypes.RScalar<'u> =
+            RExpr.typedVectorByName name this
 
         /// Represents the R value in an appropriate semantic
         /// R type for further data exploration and analysis, without
         /// extraction from R memory.
-        member this.TryAsRTyped = SymbolicExpression.tryGetTyped (RExprWrapper.toRBridge this)
-        member this.AsTyped = SymbolicExpression.getTyped (RExprWrapper.toRBridge this)
-        member this.AsDataFrame = Runtime.RTypes.DataFrame.tryAsFrame (RExprWrapper.toRBridge this)
-        member this.AsVector = Runtime.RTypes.GenericVector.tryCreate (RExprWrapper.toRBridge this)
-        member this.AsScalar = Runtime.RTypes.GenericScalar.tryCreate (RExprWrapper.toRBridge this)
-        member this.AsFactor = Runtime.RTypes.Factor.tryFromExpr (RExprWrapper.toRBridge this)
+        member this.TryAsTyped = RExpr.tryGetTyped this
+        member this.AsTyped = RExpr.getTyped this
+        member this.TryAsDataFrame = RTypes.DataFrame.tryOfExpr (RExprWrapper.toRBridge this)
+        member this.TryAsVector = RTypes.GenericVector.tryCreate (RExprWrapper.toRBridge this)
+        member this.TryAsScalar = RTypes.GenericScalar.tryCreate (RExprWrapper.toRBridge this)
+        member this.TryAsFactor = RTypes.Factor.tryOfExpr (RExprWrapper.toRBridge this)
+
+        member this.AsDataFrame () =
+            this.TryAsDataFrame
+            |> Option.defaultWith(fun _ -> failwithf "The RExpr was not a data frame. It was a %A." this.Type)
+
+        member this.AsVector () =
+            this.TryAsVector
+            |> Option.defaultWith(fun _ -> failwithf "The RExpr was not a vector. It was a %A." this.Type)
+
+        member this.AsScalar () =
+            this.TryAsScalar
+            |> Option.defaultWith(fun _ -> failwithf "The RExpr was not a scalar. It was a %A." this.Type)
+
+        member this.AsFactor () =
+            this.TryAsFactor
+            |> Option.defaultWith(fun _ -> failwithf "The RExpr was not a factor. It was a %A." this.Type)
 
         /// Get the value from an indexed vector by index.
         member this.ValueAt(index: int) : Runtime.RTypes.RScalar<'u> =
-            SymbolicExpression.typedVectorByIndex index (RExprWrapper.toRBridge this)
+            RExpr.typedVectorByIndex index this
 
         /// Get the first value of a vector.
-        member this.First<'a>() = (RExprWrapper.toRBridge this).ValueAt<'a>(0)
+        member this.Head<'a>() = RExpr.head this
 
         /// Try and get the first value of a vector, returning
         /// `None` if the `RExpr` is not a vector
         /// or an empty vector.
-        member this.TryHead<'a>() = (RExprWrapper.toRBridge this).TryHead()
+        member this.TryHead<'a>() = RExpr.tryHead this
 
-        member this.Print() = this |> RExpr.printToString
+        /// The contents of R's print function as a string.
+        member this.Print() = RExpr.printToString this

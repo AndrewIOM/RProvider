@@ -5,8 +5,53 @@ open RBridge.Extensions
 
 /// Types representing common R types, and
 /// functions for working with them.
-/// Includes FsSci shapes for interop with other libraries.
 module RTypes =
+
+    /// Represents user-facing types of expressions in R.
+    /// Expressions are labelled with these types, for example
+    /// in FSI output.
+    type RSemanticType =
+        | ScalarType
+        | VectorType
+        | ListType
+        | FactorType
+        | MatrixType
+        | ArrayType
+        | DataFrameType
+        | FunctionType
+        | EnvironmentType
+        | S3ObjectType
+        | S4ObjectType
+        | R6ObjectType
+
+    let private scalarOrVector engine sexp =
+        match SymbolicExpression.length engine sexp with
+        | 1 -> ScalarType
+        | _ -> VectorType
+
+    /// Classify a symbolic expression into one of the semantic
+    /// types provided by RProvider.
+    let classify engine sexp =
+        match sexp with
+        | ActivePatterns.S4Object engine _ -> S4ObjectType
+        | ActivePatterns.DataFrame engine _ -> DataFrameType
+        | ActivePatterns.Factor engine _ -> FactorType
+        | _ when Extract.getDimension engine sexp = 2 -> MatrixType
+        | _ when Extract.getDimension engine sexp > 2 -> ArrayType
+        | _ when SymbolicExpression.getClasses engine sexp <> List.empty -> S3ObjectType
+        | ActivePatterns.RealVector engine _
+        | ActivePatterns.ComplexVector engine _
+        | ActivePatterns.IntegerVector engine _
+        | ActivePatterns.LogicalVector engine _
+        | ActivePatterns.CharacterVector engine _
+        | ActivePatterns.RawVector engine _ -> scalarOrVector engine sexp
+        | ActivePatterns.List engine _ -> ListType
+        | ActivePatterns.Function engine _ -> FunctionType
+        | ActivePatterns.Environment engine _ -> EnvironmentType
+        | _ ->
+            RProvider.Common.LogFile.logf "No typed conversion was possible for sexp: %A" (SymbolicExpression.getType engine sexp)
+            failwith "Could not classify expression as a semantic type."
+
 
     /// Functions for accessing R functions within typed
     /// R wrappers.
@@ -30,7 +75,6 @@ module RTypes =
             | Ok sexp -> tryMake sexp |> Option.get
             | Error e -> failwith e
 
-    /// A base
     module VectorBase =
 
         type RVectorBase<'T> =
@@ -126,7 +170,7 @@ module RTypes =
                 static member (+)(a, b) = RRealVector.Add a b
                 member this.Item(i: int) = this.Inner.[i, Scalar.tryFromExpression]
                 member this.Item(name: string) = this.Inner.[name, Scalar.tryFromExpression]
-
+                member this.Length = R.baseOp "length" this.Inner.Sexp Scalar.tryFromExpression
 
     /// Type wrapper for R data.frame instances.
     module DataFrame =
@@ -161,7 +205,7 @@ module RTypes =
         // // Attributes.setNames eng list df.ColumnNames
         // // list
 
-        let tryAsFrame (sexp: SymbolicExpression) =
+        let tryOfExpr (sexp: SymbolicExpression) =
             match SymbolicExpression.getClasses Singletons.engine.Value sexp with
             | ls when ls |> List.contains "data.frame" -> Some { Sexp = sexp }
             | _ -> None
@@ -187,10 +231,12 @@ module RTypes =
 
             member this.AsStrings =
                 lazy
-                    (let levels = this.Levels.Value
-                     this.Indices.Value |> Array.map (fun i -> levels.[i - 1]))
+                    (this.Levels.Value
+                    |> Option.defaultWith (fun _ -> failwith "Could not get levels for factor")
+                    |> fun levels ->
+                        this.Indices.Value |> Array.map (fun i -> levels.[i - 1]))
 
-        let tryFromExpr expr : RFactor option =
+        let tryOfExpr expr : RFactor option =
             match expr with
             | ActivePatterns.Factor Singletons.engine.Value e -> Some { Sexp = e }
             | _ -> None
@@ -203,20 +249,35 @@ module RTypes =
         | ComplexV of Real.Vector.RRealVector<'u> // <Extensions.RComplex>
         | RawV of Real.Vector.RRealVector<'u> // <byte>
 
+    with
+        member this.Real() =
+            match this with
+            | NumericV s -> s
+            | _ -> failwith "Expression was not a vector of real numbers"
+
+
     module GenericVector =
 
         let tryCreate sexp =
             match sexp with
             | ActivePatterns.RealVector Singletons.engine.Value v -> Real.Vector.tryCreate v |> Option.map NumericV
-            | _ -> failwith "not implemented"
+            | _ -> failwith "not implemented (vector)"
 
 
-    type RScalar<[<Measure>] 'u> = NumericS of Real.Scalar.RRealScalar<'u>
-    // | IntegerV of VectorBase.RVectorBase<int>
-    // | LogicalV of VectorBase.RVectorBase<bool>
-    // | CharacterV of VectorBase.RVectorBase<string>
-    // | ComplexV of VectorBase.RVectorBase<Extensions.RComplex>
-    // | RawV of VectorBase.RVectorBase<byte>
+    type RScalar<[<Measure>] 'u> =
+        | NumericS of Real.Scalar.RRealScalar<'u>
+        | IntegerV of VectorBase.RVectorBase<int>
+        | LogicalV of VectorBase.RVectorBase<bool>
+        | CharacterV of VectorBase.RVectorBase<string>
+        | ComplexV of VectorBase.RVectorBase<Extensions.RComplex>
+        | RawV of VectorBase.RVectorBase<byte>
+
+    with
+        member this.Real() =
+            match this with
+            | NumericS s -> s
+            | _ -> failwith "Expression was not a real number"
+
 
     module GenericScalar =
 
@@ -224,7 +285,7 @@ module RTypes =
             match sexp with
             | ActivePatterns.RealVector Singletons.engine.Value v ->
                 Real.Scalar.tryFromExpression v |> Option.map NumericS
-            | _ -> failwith "not implemented"
+            | _ -> failwith "not implemented (Scalar)"
 
 
     /// A wrapped representation of an R value, which
@@ -235,10 +296,3 @@ module RTypes =
         | DataFrameInR of DataFrame.RFrame
         | FactorInR of Factor.RFactor
 
-    module Semantic =
-
-        let getExpr semantic =
-            match semantic with
-            | ScalarInR s ->
-                match s with
-                | NumericS s -> s.RExpr

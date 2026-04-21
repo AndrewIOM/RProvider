@@ -132,18 +132,18 @@ module RInterop =
     /// each function in a package.
     let getBindings (packageName: string) =
 
-        // In R, a namespace is an environment
-        let nsEnv = REnvironment.ofNamespace Singletons.engine.Value packageName
+        // Get the package environment (not namespace environment)
+        let pkgEnv = REnvironment.ofPackage Singletons.engine.Value packageName
 
         let names =
-            Evaluate.eval nsEnv "ls(all.names=TRUE)"
+            Evaluate.eval pkgEnv "ls(all.names=TRUE)"
             |> Result.map (Extract.extractStringArray Singletons.engine.Value)
             |> Result.defaultValue [||]
 
         names
         |> Array.choose
             (fun name ->
-                match tryGetValue Singletons.engine.Value nsEnv name with
+                match tryGetValue Singletons.engine.Value pkgEnv name with
                 | None -> None
                 | Some sexp ->
                     let forced = Promise.force Singletons.engine.Value sexp

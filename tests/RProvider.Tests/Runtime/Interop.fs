@@ -25,10 +25,9 @@ let interop =
             Expect.isNotEmpty desc "Base package description was empty"
             Expect.equal desc "Base R functions." "Base description was not as expected"
 
-        // testCase "Get package description is empty non-existent package" <| fun _ ->
-        //     let desc = RInterop.getPackageDescription "made-up-package"
-        //     Expect.equal desc "" "Expected empty description for non-existent package"
-        //     // or Expect.throws if you choose to throw instead
+        testCase "Get package description is empty for non-existent package" <| fun _ ->
+            let desc = RInterop.getPackageDescription "made-up-package"
+            Expect.equal desc "" "Expected empty description for non-existent package"
 
         testCase "Function description for 'base'" <| fun _ ->
             let functions = RInterop.getFunctionDescriptions "base"
@@ -39,14 +38,14 @@ let interop =
         testCase "Can load the 'zoo' package" <| fun _ ->
             RInterop.loadPackage "zoo"
 
-        // testCase "Loading a package twice has no effect" <| fun _ ->
-        //     RInterop.loadPackage "zoo"
-        //     RInterop.loadPackage "zoo"
+        testCase "Loading a package twice has no effect" <| fun _ ->
+            RInterop.loadPackage "zoo"
+            RInterop.loadPackage "zoo"
 
-        // testCase "Throws for loading non-existent package" <| fun _ ->
-        //     Expect.throws (fun _ ->
-        //         RInterop.loadPackage "made-up-package")
-        //         "Did not throw despite package not existing"
+        testCase "Throws for loading non-existent package" <| fun _ ->
+            Expect.throws (fun _ ->
+                RInterop.loadPackage "made-up-package")
+                "Did not throw despite package not existing"
 
         testCase "getBindings returns known symbol from base" <| fun _ ->
             let bindings = RInterop.getBindings "base"

@@ -64,7 +64,7 @@ module SymbolicExpression =
     let column (name: string) (expr: SymbolicExpression) : SymbolicExpression =
         match expr with
         | DataFrame Singletons.engine.Value df ->
-            Runtime.RTypes.DataFrame.tryAsFrame df
+            Runtime.RTypes.DataFrame.tryOfExpr df
             |> Option.defaultWith (fun _ -> failwith "The expression was not a valid R data frame")
             |> Runtime.RTypes.DataFrame.getColumn name Singletons.engine.Value
         | _ -> invalidOp "The expression is not an R data frame."
@@ -88,6 +88,8 @@ module SymbolicExpression =
         | Some r -> r
         | None -> failwithf "Could not convert R expression to .NET type %s." typeof<'a>.Name
 
+    let semanticType = RTypes.classify Singletons.engine.Value
+    
     let tryGetTyped sexp = Convert.tryAsRTyped Singletons.engine.Value sexp
 
     let getTyped sexp =
@@ -104,14 +106,16 @@ module SymbolicExpression =
             | Some e -> e
             | None -> failwithf "Member not defined: %s" name
         | List Singletons.engine.Value l -> listItem name l
-        | _ -> invalidOp "Unsupported operation on R object"
+        | _ ->
+            let t = SymbolicExpression.getType Singletons.engine.Value sexp
+            invalidOp <| sprintf "Unsupported operation on R object (R type: %A)" t
 
     let typedVectorByName (name: string) sexp =
         match Runtime.RTypes.GenericVector.tryCreate sexp with
         | Some v ->
             match v with
             | Runtime.RTypes.RVector.NumericV v -> v.[name] |> Runtime.RTypes.NumericS
-            | _ -> failwith "not implemented"
+            | _ -> failwith "not implemented (typed v by name)"
         | None -> invalidOp "Expression was not a vector"
 
     let typedVectorByIndex (index: int) sexp =
@@ -119,7 +123,7 @@ module SymbolicExpression =
         | Some v ->
             match v with
             | Runtime.RTypes.RVector.NumericV v -> v.[index] |> Runtime.RTypes.NumericS
-            | _ -> failwith "not implemented"
+            | _ -> failwith "not implemented (typed v by index)"
         | None -> invalidOp "Expression was not a vector"
 
     let head sexp =
@@ -139,6 +143,7 @@ module SymbolicExpressionExtensions =
     type SymbolicExpression with
 
         member this.Class: string [] = SymbolicExpression.rClass this
+        member this.Type = SymbolicExpression.semanticType this
 
         member this.TryFromR<'a>() = SymbolicExpression.tryGetValue<'a> this
 
@@ -157,10 +162,10 @@ module SymbolicExpressionExtensions =
         /// extraction from R memory.
         member this.TryAsRTyped = SymbolicExpression.tryGetTyped this
         member this.AsTyped = SymbolicExpression.getTyped this
-        member this.AsDataFrame = Runtime.RTypes.DataFrame.tryAsFrame this
+        member this.AsDataFrame = Runtime.RTypes.DataFrame.tryOfExpr this
         member this.AsVector = Runtime.RTypes.GenericVector.tryCreate this
         member this.AsScalar = Runtime.RTypes.GenericScalar.tryCreate this
-        member this.AsFactor = Runtime.RTypes.Factor.tryFromExpr this
+        member this.AsFactor = Runtime.RTypes.Factor.tryOfExpr this
 
         /// Get the value from an indexed vector by index.
         member this.ValueAt(index: int) : Runtime.RTypes.RScalar<'u> = SymbolicExpression.typedVectorByIndex index this
