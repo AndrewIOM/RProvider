@@ -18,6 +18,14 @@ let printing =
 
     ]
 
+[<Tests>]
+let genTypes =
+    testList "Generated types" [
+
+        testCase "Can access mtcars (dataset property)" <| fun _ ->
+            R.mtcars |> ignore
+    ]
+
 // module RoundTrip =
 
 //     let roundTripAsFactor (value: string []) =

@@ -161,8 +161,8 @@ Target.create
                     { args with
                           Verbosity = Some Fake.DotNet.DotNet.Verbosity.Normal
                           CustomParams = Some "-c Release" })
-                "test"
-                "tests/RProvider.IntegrationTests/Test.RProvider.fsproj"
+                "run"
+                "--project tests/RProvider.Tests/RProvider.Tests.fsproj"
 
         if result.ExitCode <> 0 then
             failwith "Tests failed")

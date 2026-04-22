@@ -30,7 +30,7 @@ type IRInteropServer =
     /// with an F# type that it can be converted to (this is done by getting the type
     /// of `symExpr.Value` using currently installed convertors). If the type is not
     /// available, this returns `null`.
-    abstract member GetRDataSymbols: string -> (string * System.Type) []
+    abstract member GetRDataSymbols: string -> (string * option<System.Type>) []
 
 module InteropServer =
 
@@ -52,7 +52,7 @@ module InteropServer =
         | Bindings of (string * string)[]
         | FunctionDescriptions of (string * string)[]
         | PackageDescription of string
-        | RDataSymbols of (string * System.Type)[]
+        | RDataSymbols of (string * option<System.Type>)[]
         | ServerError of string
 
     module Request =
@@ -135,9 +135,14 @@ module InteropServer =
             | RDataSymbols syms ->
                 w.Write "RDataSymbols"
                 w.Write syms.Length
-                for (name, typ) in syms do
+                for (name, typOpt) in syms do
                     w.Write name
-                    w.Write (typ.AssemblyQualifiedName)
+                    match typOpt with
+                    | Some typ ->
+                        w.Write true
+                        w.Write typ.AssemblyQualifiedName
+                    | None ->
+                        w.Write false
 
             | ServerError msg ->
                 w.Write "ServerError"
@@ -184,9 +189,15 @@ module InteropServer =
                 let arr =
                     Array.init n (fun _ ->
                         let name = r.ReadString()
-                        let aqn = r.ReadString()
-                        let typ = System.Type.GetType(aqn, throwOnError = false)
-                        name, typ)
+                        let hasType = r.ReadBoolean()
+                        let typOpt =
+                            if hasType then
+                                let aqn = r.ReadString()
+                                let t = System.Type.GetType(aqn, throwOnError = false)
+                                Some t
+                            else
+                                None
+                        name, typOpt)
                 RDataSymbols arr
 
             | "ServerError" ->

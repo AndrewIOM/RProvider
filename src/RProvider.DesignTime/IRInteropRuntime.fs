@@ -30,11 +30,11 @@ type IRInteropRuntime =
     static member globalEnvironment () : RExpr =
         raise (NotImplementedException "Design-time stub")
 
-    static member loadRDataFile (fileName: string) : RExpr =
+    static member loadRDataFile (fileName: string) : RData =
         raise (NotImplementedException())
 
-    static member getRDataSymbol (env: RExpr) (name: string) : RExpr =
+    static member getRDataSymbol (env: RData) (name: string) : RExpr =
         raise (NotImplementedException "Design-time stub")
 
-    static member getRDataSymbolTyped (env: RExpr) (name: string) : obj =
+    static member getRDataSymbolTyped<'T> (env: RData) (name: string) : 'T =
         raise (NotImplementedException "Design-time stub")

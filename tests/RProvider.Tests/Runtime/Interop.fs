@@ -25,9 +25,9 @@ let interop =
             Expect.isNotEmpty desc "Base package description was empty"
             Expect.equal desc "Base R functions." "Base description was not as expected"
 
-        testCase "Get package description is empty for non-existent package" <| fun _ ->
+        testCase "Get package description is placeholder for non-existent package" <| fun _ ->
             let desc = RInterop.getPackageDescription "made-up-package"
-            Expect.equal desc "" "Expected empty description for non-existent package"
+            Expect.equal desc "[Could not get package description from R]" "Expected empty description for non-existent package"
 
         testCase "Function description for 'base'" <| fun _ ->
             let functions = RInterop.getFunctionDescriptions "base"

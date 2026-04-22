@@ -4,9 +4,12 @@ open System.IO
 open System.Reflection
 open ProviderImplementation.ProvidedTypes
 open Microsoft.FSharp.Core.CompilerServices
+
 open RProvider
 open RProvider.Common
-open PipeMethodCalls
+open RProvider.Runtime
+open RProvider.Abstractions
+open RProvider.Common.InteropServer
 
 [<TypeProvider>]
 type public RDataProvider(cfg: TypeProviderConfig) as this =
@@ -30,7 +33,7 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
         let longFileName =
             if Path.IsPathRooted(fileName) then fileName else Path.Combine(cfg.ResolutionFolder, fileName)
 
-        let resTy = ProvidedTypeDefinition(asm, "RProvider", typeName, None)
+        let resTy = ProvidedTypeDefinition(asm, "RProvider", typeName, Some typeof<RData>)
 
         let ctor = ProvidedConstructor(parameters = [], invokeCode = fun _ -> <@@ IRInteropRuntime.loadRDataFile longFileName @@> )
         resTy.AddMember(ctor)
@@ -44,30 +47,37 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
         resTy.AddMember(ctor)
 
         // For each key in the environment, provide a property..
-        for name, typ in
-            RInteropClient.getServer().InvokeAsync(fun s -> s.GetRDataSymbols(longFileName))
-            |> Async.AwaitTask
-            |> Async.RunSynchronously do
+        let response : (string * option<System.Type>)[] = RInteropClient.server.Value.Call (ServerRequest.GetRDataSymbols longFileName)
+        LogFile.logf "Got response from server: %A" response
+        for name, typ in response do
             LogFile.logf "Adding member %s" name
 
             match typ with
-            | null ->
+            | None ->
                 // Generate property of type 'SymbolicExpression'
                 ProvidedProperty(
                     name,
                     typeof<RExpr>,
-                    getterCode = fun (Singleton self) -> <@@ IRInteropRuntime.getRDataSymbol (%%self) name @@>
+                    getterCode = fun (Singleton self) -> <@@ IRInteropRuntime.getRDataSymbol ((%%self : RData)) name @@>
                 )
                 |> resTy.AddMember
-            | typ ->
+            | Some typ ->
                 // If there is a default convertor for the type, then generate
                 // property of the statically known type (e.g. Frame<string, string>)
                 // (otherwise, `Value` will throw)
+                let miGetTyped =
+                    typeof<IRInteropRuntime>.GetMethod "getRDataSymbolTyped"
+                    |> fun mi -> mi.MakeGenericMethod [| typ |]
+
                 ProvidedProperty(
                     name,
                     typ,
                     getterCode = fun (Singleton self) ->
-                        <@@ IRInteropRuntime.getRDataSymbolTyped (%%self) name @@>
+                        Quotations.Expr.Call(
+                            miGetTyped,
+                            [ Quotations.Expr.Coerce(self, typeof<RData>)
+                              Quotations.Expr.Value(name) ]
+                        )
                 )
                 |> resTy.AddMember
 

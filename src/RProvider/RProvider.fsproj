@@ -15,9 +15,9 @@
     <Compile Include="SymbolicExpressionExtensions.fs" />
     <Compile Include="RInterop.fs" />
     <Compile Include="RExprExtensions.fs" />
+    <Compile Include="REnv.fs" />
     <Compile Include="IRInteropRuntime.fs" />
     <Compile Include="Operators.fs" />
-    <Compile Include="REnv.fs" />
     <Compile Include="FSIPrinters.fs" />
     <Compile Include="RProviderAttribute.fs" />
   </ItemGroup>

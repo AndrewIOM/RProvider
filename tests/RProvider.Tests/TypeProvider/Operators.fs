@@ -24,12 +24,12 @@ let operatorTests =
 
         testCase "Can get member of an S3 object when it exists" <| fun _ ->
             let col = R.mtcars.Member "mpg"
-            let t = col.TryAsRTyped
-            Expect.isSome col.AsVector "Expected mpg column to be a vector"
+            let t = col.TryAsTyped
+            Expect.isSome col.TryAsVector "Expected mpg column to be a vector"
 
         testCase "Can access S3 member using dynamic operator" <| fun _ ->
             let col = R.mtcars?mpg
-            Expect.isSome col.AsVector "Expected mpg column to be a vector"
+            Expect.isSome col.TryAsVector "Expected mpg column to be a vector"
 
         testCase "Throws when S3 member does not exist" <| fun _ ->
             Expect.throws
@@ -47,10 +47,11 @@ let operatorTests =
             ]) |> ignore
 
             // Instantiate it
-            let person = R.``new`` (namedParams ["Class" => "Person"])
+            let person =
+                R.``new`` (namedParams ["Class" => "Person"])
 
             // Access slot
-            let age = Expect.wantSome person?age.AsVector "Age was not a numeric vector"
+            let age = Expect.wantSome person?age.TryAsVector "Age was not a numeric vector"
 
             let len: int =
                 match age with

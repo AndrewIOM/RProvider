@@ -3,6 +3,16 @@ namespace RProvider.Runtime
 open RBridge.Extensions
 open RProvider.Common
 
+/// [omit]
+[<AutoOpen>]
+module REnvironmentExtensions =
+
+    open RBridge
+
+    type REnvironment with
+        member this.AsSymbolicExpression : SymbolicExpression = { ptr = this.Pointer }
+
+
 /// Determines symbol names to apply for new bindings
 /// in R, and handles execution using the RProvider singletons.
 module internal Evaluate =

@@ -17,6 +17,7 @@
     <Compile Include="../Common/Serialisation.fs" />
     <Compile Include="RInteropClient.fs" />
     <Compile Include="RTypeBuilder.fs" />
+    <Compile Include="RData.fs" />
     <Compile Include="RProvider.fs" />
   </ItemGroup>
   <ItemGroup>

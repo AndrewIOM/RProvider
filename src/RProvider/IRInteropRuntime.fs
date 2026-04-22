@@ -51,31 +51,20 @@ type IRInteropRuntime =
         let sexp: RBridge.SymbolicExpression = { ptr = env.Pointer }
         sexp |> RExprWrapper.toRProvider
 
-    static member loadRDataFile(fileName: string) : RExpr =
+    static member loadRDataFile(fileName: string) : RProvider.Abstractions.RData =
         LogFile.logf "loadRDataFile"
-        raise (NotImplementedException())
+        let sexp = REnv.loadRDataFile fileName
+        { ptr = sexp.Pointer } |> RExpr.wrap |> RData.wrap
 
-    static member getRDataSymbol (env: RExpr) (name: string) : RExpr =
+    static member getRDataSymbol (env: RData) (name: string) : RExpr =
         LogFile.logf "getRDataSymbol"
-        let rEnvExpr = RExprWrapper.toRBridge env
+        let rEnv = env |> RData.unwrap |> RExprWrapper.toRBridge |> RBridge.Extensions.REnvironment.ofSExp Singletons.engine.Value |> Option.get
+        let sexp = RInterop.tryGetValue Singletons.engine.Value rEnv name |> Option.get
+        sexp |> RExprWrapper.toRProvider
 
-        let rEnv =
-            match RBridge.Extensions.REnvironment.ofSExp Singletons.engine.Value rEnvExpr with
-            | Some e -> e
-            | o -> invalidOp $"Expected REnvironment in env RExpr, got {o.GetType().FullName}"
-
-        failwith "not implemented"
-    // let value = RProvider.Runtime.RInterop.getRDataSymbol env name
-    // wrap (value :> obj)
-
-    static member getRDataSymbolTyped (env: RExpr) (name: string) : obj =
+    static member getRDataSymbolTyped<'T> (env: RData) (name: string) : 'T =
         LogFile.logf "getRDataSymbolTyped"
-        let rEnvExpr = RExprWrapper.toRBridge env
-
-        let rEnv =
-            match RBridge.Extensions.REnvironment.ofSExp Singletons.engine.Value rEnvExpr with
-            | Some e -> e
-            | o -> invalidOp $"Expected REnvironment in env RExpr, got {o.GetType().FullName}"
-
-        failwith "not implemented"
-// RProvider.Runtime.RInterop.getRDataSymbolTyped env name
+        let rEnv = env |> RData.unwrap |> RExprWrapper.toRBridge |> RBridge.Extensions.REnvironment.ofSExp Singletons.engine.Value |> Option.get
+        let sexp = RInterop.tryGetValue Singletons.engine.Value rEnv name |> Option.get
+        Convert.tryFromRStructural Singletons.engine.Value sexp
+        |> Option.defaultWith(fun _ -> failwithf "Could not get typed version of symbol [%s]." typeof<'T>.Name)

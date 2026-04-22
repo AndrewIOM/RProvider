@@ -102,6 +102,16 @@ module Convert =
         // | RealVector engine xs when Dates.isPosixDateTime xs && at = typeof<RDateTime> ->
         //     xs |> Array.map (fun seconds -> Create.dateTimeVectorFromSeconds seconds)
 
+        | IntegerVector engine xs when at = typeof<obj> -> xs |> Extract.extractIntArray engine |> retype |> unbox
+        | RealVector engine xs when at = typeof<obj> -> xs |> Extract.extractFloatArray engine |> retype |> unbox
+        | LogicalVector engine xs when at = typeof<obj> -> xs |> Extract.extractLogicalArray engine |> retype |> unbox
+        | CharacterVector engine xs when at = typeof<obj> -> xs |> Extract.extractStringArray engine |> retype |> unbox
+        | ComplexVector engine xs when at = typeof<obj> -> xs |> Extract.extractComplexArray engine |> retype |> unbox
+        | CharacterMatrix engine v when at = typeof<obj> -> v |> Extract.extractStringMatrix engine |> retype |> unbox
+        | IntegerMatrix engine v when at = typeof<obj> -> v |> Extract.extractIntMatrix engine |> retype |> unbox
+        | LogicalMatrix engine v when at = typeof<obj> -> v |> Extract.extractLogicalMatrix engine |> retype |> unbox
+        | Null engine _ when at = typeof<obj> -> List.empty |> retype |> unbox
+
         | _ ->
             LogFile.logf
                 "Cannot convert SexpType %A to %s"
@@ -138,6 +148,7 @@ module Convert =
         // Pass-through of basic R expression values:
         | :? SymbolicExpression as s -> s
         | :? RProvider.Abstractions.RExpr as s -> RExprWrapper.toRBridge s
+        | :? RBridge.Extensions.REnvironment as s -> s.AsSymbolicExpression
 
         // .NET primitives:
         | null -> { ptr = eng.Api.nilValue }
