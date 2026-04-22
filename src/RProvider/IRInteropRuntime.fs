@@ -45,6 +45,18 @@ type IRInteropRuntime =
         let result = RProvider.Runtime.RInterop.call package name serialized named varArgs
         result |> RExprWrapper.toRProvider
 
+    static member getValue
+        (package: string)
+        (name: string)
+        : RExpr =
+        LogFile.logf "call"
+        let pkgEnv = RBridge.Extensions.REnvironment.ofPackage Singletons.engine.Value package
+        match RInterop.tryGetValue Singletons.engine.Value pkgEnv name with
+        | Some sexp -> sexp |> RExprWrapper.toRProvider
+        | None ->
+            LogFile.logf "Error getting value '%s' from package '%s'." name package
+            failwithf "Error getting value '%s' from package '%s'." name package
+
     static member globalEnvironment() : RExpr =
         LogFile.logf "globalEnvironment"
         let env = RProvider.Runtime.RInterop.globalEnvironment ()

@@ -27,6 +27,9 @@ type IRInteropRuntime =
         : RExpr =
         raise (NotImplementedException "Design-time stub")
 
+    static member getValue (package: string) (name: string) : RExpr =
+        raise (NotImplementedException "Design-time stub")
+
     static member globalEnvironment () : RExpr =
         raise (NotImplementedException "Design-time stub")
 

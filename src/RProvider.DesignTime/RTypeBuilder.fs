@@ -248,9 +248,7 @@ module internal RTypeBuilder =
                                             isStatic = true,
                                             getterCode =
                                                 fun _ ->
-                                                    <@@
-                                                        let globEnv = RProvider.Runtime.IRInteropRuntime.globalEnvironment()
-                                                        RProvider.Runtime.IRInteropRuntime.call globEnv package name serializedRVal Array.empty Array.empty @@>
+                                                    <@@ RProvider.Runtime.IRInteropRuntime.getValue package name @@>
                                         )
                                         :> MemberInfo ]
                     with ex ->
