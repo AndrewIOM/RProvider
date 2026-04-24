@@ -6,17 +6,6 @@ open RBridge.Extensions.ActivePatterns
 open RProvider.Runtime.RTypes
 open RProvider.Common
 
-/// Convert between user-facing RExpr and the internal
-/// RBridge symbolic expression type.
-module internal RExprWrapper =
-
-    open RProvider.Abstractions
-
-    let toRBridge (ex: RExpr) : RBridge.SymbolicExpression = { ptr = (RExpr.unwrap ex).ptr }
-
-    let toRProvider (ex: RBridge.SymbolicExpression) : RExpr = RExpr.wrap { ptr = ex.ptr }
-
-
 /// Contains conversion functions to convert from .NET types
 /// to values in R, and from R to .NET types. Functions allow
 /// extraction of R data to .NET memory, or expression of R objects
@@ -42,6 +31,10 @@ module Convert =
             xs |> Extract.extractStringArray engine |> retype |> unbox
         | ComplexVector engine xs when at = typeof<RComplex []> ->
             xs |> Extract.extractComplexArray engine |> retype |> unbox
+        | RealVector engine xs when Dates.isDate engine xs && at = typeof<System.DateOnly[]> ->
+            Extract.extractDateArray engine xs |> Array.map RDate.toDateOnly |> retype |> unbox
+        | RealVector engine xs when Dates.isPosixDateTime engine xs && at = typeof<RDateTime[]> ->
+            Extract.extractDateTimeArray engine xs |> Array.map RDateTime.toDateTimeUtc |> retype |> unbox
 
         // To list:
         | IntegerVector engine xs when at = typeof<int list> ->
@@ -54,6 +47,10 @@ module Convert =
             xs |> Extract.extractStringArray engine |> Array.toList |> retype |> unbox
         | ComplexVector engine xs when at = typeof<RComplex list> ->
             xs |> Extract.extractComplexArray engine |> Array.toList |> retype |> unbox
+        | RealVector engine xs when Dates.isDate engine xs && at = typeof<RDate list> ->
+            Extract.extractDateArray engine xs |> Array.map RDate.toDateOnly |> Array.toList |> retype |> unbox
+        | RealVector engine xs when Dates.isPosixDateTime engine xs && at = typeof<RDateTime list> ->
+            Extract.extractDateTimeArray engine xs |> Array.map RDateTime.toDateTimeUtc |> Array.toList |> retype |> unbox
 
         // To atomic:
         | IntegerVector engine xs when at = typeof<int> ->
@@ -66,7 +63,10 @@ module Convert =
             xs |> Extract.extractStringArray engine |> Array.head |> retype |> unbox
         | ComplexVector engine xs when at = typeof<RComplex> ->
             xs |> Extract.extractComplexArray engine |> Array.head |> retype |> unbox
-        // | NumericVector (v) -> wrap <| v.ToArray()
+        | RealVector engine xs when Dates.isDate engine xs && at = typeof<RDate> ->
+            Extract.extractDateArray engine xs |> Array.map RDate.toDateOnly |> Array.head |> retype |> unbox
+        | RealVector engine xs when Dates.isPosixDateTime engine xs && at = typeof<RDateTime> ->
+            Extract.extractDateTimeArray engine xs |> Array.map RDateTime.toDateTimeUtc |> Array.head |> retype |> unbox
 
         // To matrix:
         | CharacterMatrix engine v when at = typeof<string [,]> ->
@@ -86,21 +86,6 @@ module Convert =
         | Null engine _ when at = typeof<bool option []> -> retype <| Array.empty<bool>
         | Null engine _ when at = typeof<double list> -> retype <| List.empty<double>
         | Null engine _ when at = typeof<double []> -> retype <| Array.empty<double>
-
-        // Dates and date-times
-        // TODO Implement date/time conversions:
-        // | RealVector engine xs when Dates.isDate xs && at = typeof<RDate[]> ->
-        //     xs |> Array.map (fun days -> RDateTime.fromDays days)
-        // | RealVector engine xs when Dates.isPosixDateTime xs && at = typeof<RDateTime[]> ->
-        //     xs |> Array.map (fun seconds -> Create.dateTimeVectorFromSeconds seconds)
-        // | RealVector engine xs when Dates.isDate xs && at = typeof<RDate list> ->
-        //     xs |> Array.map (fun days -> Create.dateVectorFromDays days)
-        // | RealVector engine xs when Dates.isPosixDateTime xs && at = typeof<RDateTime list> ->
-        //     xs |> Array.map (fun seconds -> Create.dateTimeVectorFromSeconds seconds)
-        // | RealVector engine xs when Dates.isDate xs && at = typeof<RDate> ->
-        //     xs |> Array.map (fun days -> Create.dateVectorFromDays days)
-        // | RealVector engine xs when Dates.isPosixDateTime xs && at = typeof<RDateTime> ->
-        //     xs |> Array.map (fun seconds -> Create.dateTimeVectorFromSeconds seconds)
 
         | IntegerVector engine xs when at = typeof<obj> -> xs |> Extract.extractIntArray engine |> retype |> unbox
         | RealVector engine xs when at = typeof<obj> -> xs |> Extract.extractFloatArray engine |> retype |> unbox
@@ -129,11 +114,11 @@ module Convert =
     let tryAsRTyped engine sexp : RTypes.RSemantic<'u> option =
         LogFile.logf "Classified as %A" (classify engine sexp)
         match classify engine sexp with
-        | FactorType -> Factor.tryOfExpr sexp |> Option.map FactorInR
-        | DataFrameType -> DataFrame.tryOfExpr sexp |> Option.map DataFrameInR
-        | VectorType -> GenericVector.tryCreate sexp |> Option.map VectorInR        
-        | ScalarType
-        | ListType
+        | FactorType -> Factor.tryFromExpression sexp |> Option.map FactorInR
+        | DataFrameType -> DataFrame.tryFromExpression sexp |> Option.map DataFrameInR
+        | VectorType -> GenericVector.tryFromExpression sexp |> Option.map VectorInR        
+        | ScalarType -> GenericScalar.tryFromExpression sexp |> Option.map ScalarInR
+        | ListType -> HeterogeneousList.tryFromExpression sexp |> Option.map ListInR
         | MatrixType
         | ArrayType
         | FunctionType
@@ -141,6 +126,29 @@ module Convert =
         | S3ObjectType
         | S4ObjectType
         | R6ObjectType -> None
+
+    let private toDateTimeVector (eng: NativeApi.RunningEngine) (dates: System.DateTime seq) =
+        let converted =
+            dates |> Seq.map(fun d ->        
+                match d.Kind with
+                | System.DateTimeKind.Utc -> d, Some "UTC"
+                | System.DateTimeKind.Local -> d.ToUniversalTime(), Some System.TimeZoneInfo.Local.Id
+                | System.DateTimeKind.Unspecified -> System.DateTime.SpecifyKind(d, System.DateTimeKind.Utc), Some "UTC"
+                | _ -> failwith "Unexpected date time kind %i" d.Kind
+            )
+            |> Seq.toArray
+        let seconds = converted |> Array.map(fun (utc,_) -> (utc - System.DateTime(1970,1,1,0,0,0,System.DateTimeKind.Utc)).TotalSeconds)
+        let timezones = converted |> Array.map snd |> Array.distinct
+        let timezone =
+            match timezones with
+            | [| tz |] -> tz
+            | _ -> failwith "Cannot mix timezones or pass an empty date list as a date-time vector to R."
+        Create.dateTimeVector eng seconds timezone
+
+    let private toRDateVector engine (dates: System.DateOnly seq) =
+        dates
+        |> Seq.map (fun d -> d.DayNumber - RDate.unixEpochDayNumber)
+        |> Create.dateVector engine
 
     let toR (eng: NativeApi.RunningEngine) (value: obj) : SymbolicExpression =
         match value with
@@ -167,18 +175,24 @@ module Convert =
         | :? RComplex as c -> Create.complexVector eng [| c |]
         | :? array<RComplex> as cs -> Create.complexVector eng cs
         | :? list<RComplex> as cs -> Create.complexVector eng cs
-        // TODO RDate and RDateTime.
+        | :? System.DateOnly as d -> toRDateVector eng [| d |]
+        | :? array<System.DateOnly> as d -> toRDateVector eng d
+        | :? list<System.DateOnly> as d -> toRDateVector eng d
+        | :? System.DateTime as d -> toDateTimeVector eng [ d ]
+        | :? array<System.DateTime> as d -> toDateTimeVector eng d
+        | :? list<System.DateTime> as d -> toDateTimeVector eng d
 
-        // Pass-through of R semantic types:
+        // Pass-through of RProvider semantic types:
+        | :? RSemantic<_> as sem -> sem.Sexp
+        | :? RVector<_> as v -> v.Sexp
+        | :? RScalar<_> as s -> s.Sexp
+        | :? DataFrame.RFrame as df -> df.Sexp
+        | :? DataFrame.Column.Column as col -> DataFrame.Column.getSexp col
         | :? Factor.RFactor as f -> f.Sexp
+        | :? HeterogeneousList.HList as hlist -> hlist.Sexp
         | :? Real.Vector.RRealVector<_> as v -> v.Inner.Sexp
-        // | :? RVector.ComplexV v -> v.Inner.Sexp
-        // | :? RVector.IntegerV v -> v.Inner.Sexp
-        // | :? RVector.LogicalV v -> v.Inner.Sexp
-        // | :? RVector.NumericV v -> v.Inner.Sexp
-        // | :? RVector.RawV v -> v.Inner.Sexp
-        | :? Real.Scalar.RRealScalar<_> as s -> s.RExpr
-        | :? DataFrame.RFrame as df -> df.RExp
+        | :? VectorBase.RVectorBase<_> as v -> v.Sexp
+        | :? Real.Scalar.RRealScalar<_> as s -> s.Sexp
 
         | _ ->
             failwithf

@@ -7,7 +7,7 @@ nuget FSharp.Core ~> 8
 nuget FSharp.TypeProviders.SDK 8.5.0
 
 nuget System.Reflection.MetadataLoadContext ~> 10.0.0
-nuget RBridge.Extensions 1.0.6
+nuget RBridge.Extensions 1.0.8
 
 group Test
 

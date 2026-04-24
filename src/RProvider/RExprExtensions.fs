@@ -27,13 +27,13 @@ module RExpr =
     /// <param name="expr">An R symbolic expression</param>
     /// <returns>Some symbolic expression if the expression was an S4
     /// object and had the slot, or None otherwise.</returns>
-    let trySlot name expr = expr |> RExprWrapper.toRBridge |> SymbolicExpression.trySlot name
+    let trySlot name expr = expr |> RExprWrapper.toRBridge |> SymbolicExpression.trySlot name |> Option.map RExprWrapper.toRProvider
 
     /// <summary>Gets the value of a slot as a SymbolicExpression</summary>
     /// <param name="name">Slot name to retrieve</param>
     /// <param name="expr">An R symbolic expression</param>
     /// <returns>A symbolic expression containing the slot value</returns>
-    let slot name expr = expr |> RExprWrapper.toRBridge |> SymbolicExpression.slot name
+    let slot name expr = expr |> RExprWrapper.toRBridge |> SymbolicExpression.slot name |> RExprWrapper.toRProvider
 
     /// <summary>Get the data from a column in an R dataframe
     /// by its name.</summary>
@@ -106,10 +106,10 @@ module RExprExtensions =
         /// extraction from R memory.
         member this.TryAsTyped = RExpr.tryGetTyped this
         member this.AsTyped = RExpr.getTyped this
-        member this.TryAsDataFrame = RTypes.DataFrame.tryOfExpr (RExprWrapper.toRBridge this)
-        member this.TryAsVector = RTypes.GenericVector.tryCreate (RExprWrapper.toRBridge this)
-        member this.TryAsScalar = RTypes.GenericScalar.tryCreate (RExprWrapper.toRBridge this)
-        member this.TryAsFactor = RTypes.Factor.tryOfExpr (RExprWrapper.toRBridge this)
+        member this.TryAsDataFrame = RTypes.DataFrame.tryFromExpression (RExprWrapper.toRBridge this)
+        member this.TryAsVector = RTypes.GenericVector.tryFromExpression (RExprWrapper.toRBridge this)
+        member this.TryAsScalar = RTypes.GenericScalar.tryFromExpression (RExprWrapper.toRBridge this)
+        member this.TryAsFactor = RTypes.Factor.tryFromExpression (RExprWrapper.toRBridge this)
 
         member this.AsDataFrame () =
             this.TryAsDataFrame

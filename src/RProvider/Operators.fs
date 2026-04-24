@@ -13,8 +13,10 @@ module Operators =
     /// If a dataframe, the column is extracted by name.
     let op_Dynamic (expr: RExpr) (mem: string) =
         try
-            match RExprWrapper.toRBridge expr with
-            | ActivePatterns.S4Object Singletons.engine.Value s4 -> SymbolicExpression.trySlot mem s4 |> Option.get
+            let unwrapped = RExprWrapper.toRBridge expr
+            let forced = RInterop.callFuncByName (RInterop.globalEnvironment()) "base" "eval" [] [| expr |]
+            match forced with
+            | ActivePatterns.S4Object Singletons.engine.Value s4Class -> SymbolicExpression.trySlot mem unwrapped |> Option.get
             | ActivePatterns.DataFrame Singletons.engine.Value df -> SymbolicExpression.column mem df
             | expr -> expr.Member mem
             |> RExprWrapper.toRProvider
