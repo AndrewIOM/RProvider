@@ -44,6 +44,7 @@ let roundTrips =
             testVector xs RBridge.SymbolicExpression.SexpType.RealVector [| "POSIXct"; "POSIXt" |]
 
         testProperty "Datetime scalar round-trip tests" <| fun (xs: DateTime) ->
+            let xs = DateTime.SpecifyKind(xs, DateTimeKind.Utc)
             testScalar xs RBridge.SymbolicExpression.SexpType.RealVector [| "POSIXct"; "POSIXt" |]
 
         testProperty "Date vector round-trip tests" <| fun (NonEmptyArray (xs: DateTime option [])) ->
@@ -75,12 +76,12 @@ let roundTrips =
         testProperty "Complex vector round-trip tests" <| fun (x: (float * float) []) ->
             let xs =
                 [| for (r, i) in x do
-                    if not (Double.IsNaN(r) || Double.IsNaN(i)) then yield RBridge.Extensions.RComplex.Create (r, i) |> Some |]
+                    if not (Double.IsNaN(r) || Double.IsNaN(i)) then yield Some (RBridge.Extensions.RComplex.Create (r, i)) |]
             testVector xs RBridge.SymbolicExpression.SexpType.ComplexVector [||]
 
         testProperty "Complex scalar round-trip tests" <| fun (r: float) (i:float) ->
             if not (Double.IsNaN(r) || Double.IsNaN(i)) then
-                let x = RBridge.Extensions.RComplex.Create(r, i) |> Some
+                let x = RBridge.Extensions.RComplex.Create(r, i)
                 testScalar x RBridge.SymbolicExpression.SexpType.ComplexVector [||]
 
         // testProperty "String arrays round-trip" <| fun (NonEmptyArray strings) ->
