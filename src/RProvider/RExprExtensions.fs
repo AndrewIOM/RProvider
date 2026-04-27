@@ -7,20 +7,21 @@ open RProvider.Runtime
 [<RequireQualifiedAccess>]
 module RExpr =
 
-    open RBridge
+    let private slotTypesToNA (slots: Map<string, string option>) =
+        slots |> Map.map(fun k v -> v |> Option.defaultValue "NA")
 
     /// <summary> For an S4 object, get a dictionary containing first the
     /// slot name and second the slot's R type. If the expression
     /// is not an S4 object, returns `None`.</summary>
     /// <param name="expr">An R symbolic expression</param>
     /// <returns>A diictionary with key = slot name, and value = R type</returns>
-    let trySlots: RExpr -> Map<string, string> option = RExprWrapper.toRBridge >> SymbolicExpression.trySlots
+    let trySlots: RExpr -> Map<string, string> option = RExprWrapper.toRBridge >> SymbolicExpression.trySlots >> Option.map slotTypesToNA
 
     /// <summary> For an S4 object, get a dictionary containing first the
     /// slot name and second the slot's R type.</summary>
     /// <param name="expr">An R symbolic expression</param>
     /// <returns>A diictionary with key = slot name, and value = R type</returns>
-    let slots: RExpr -> Map<string, string> = RExprWrapper.toRBridge >> SymbolicExpression.slots
+    let slots: RExpr -> Map<string, string> = RExprWrapper.toRBridge >> SymbolicExpression.slots >> slotTypesToNA
 
     /// <summary>Gets the value of a slot as a SymbolicExpression</summary>
     /// <param name="name">Slot name to retrieve</param>
@@ -110,6 +111,7 @@ module RExprExtensions =
         member this.TryAsVector = RTypes.GenericVector.tryFromExpression (RExprWrapper.toRBridge this)
         member this.TryAsScalar = RTypes.GenericScalar.tryFromExpression (RExprWrapper.toRBridge this)
         member this.TryAsFactor = RTypes.Factor.tryFromExpression (RExprWrapper.toRBridge this)
+        member this.TryAsList = RTypes.HeterogeneousList.tryFromExpression (RExprWrapper.toRBridge this)
 
         member this.AsDataFrame () =
             this.TryAsDataFrame
@@ -126,6 +128,10 @@ module RExprExtensions =
         member this.AsFactor () =
             this.TryAsFactor
             |> Option.defaultWith(fun _ -> failwithf "The RExpr was not a factor. It was a %A." this.Type)
+
+        member this.AsList () =
+            this.TryAsList
+            |> Option.defaultWith(fun _ -> failwithf "The RExpr was not a list. It was a %A." this.Type)
 
         /// Get the value from an indexed vector by index.
         member this.ValueAt(index: int) : Runtime.RTypes.RScalar<'u> =

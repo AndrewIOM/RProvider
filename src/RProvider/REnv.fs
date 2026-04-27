@@ -15,7 +15,7 @@ module REnv =
     /// Loads an R data file into a new environment and returns
     /// the environment.
     let loadRDataFile (fileName: string) =
-        let env = REnvironment.createEmpty Singletons.engine.Value
+        let env = Environment.createEmpty Singletons.engine.Value
         let envSexp: RBridge.SymbolicExpression = { ptr = env.Pointer }
         let argsByName =
             [ "file" , box fileName
@@ -39,7 +39,7 @@ module REnv =
                 "ls"
                 (namedParams [ "envir", box env ])
                 [||]
-        let keys = keysExpr |> Extract.extractStringArray Singletons.engine.Value
+        let keys = keysExpr |> Extract.extractStringArray Singletons.engine.Value |> Array.choose id
         [|
             for k in keys do
                 LogFile.logf "GetRDataSymbols: key={%O}" k

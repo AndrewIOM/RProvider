@@ -69,10 +69,10 @@ module internal Call =
         (varArgs: obj array)
         : Result<SymbolicExpression, string> =
 
-        let nsEnv = REnvironment.ofNamespace Singletons.engine.Value packageName
+        let nsEnv = Environment.ofNamespace Singletons.engine.Value packageName
 
         let fn =
-            REnvironment.tryGetValue Singletons.engine.Value nsEnv funcName
+            Environment.tryGetValue Singletons.engine.Value nsEnv funcName
             |> Option.defaultWith (fun () -> failwithf "Function %s not found in namespace %s" funcName packageName)
             |> Promise.force Singletons.engine.Value
 
@@ -102,12 +102,12 @@ module internal Call =
 
             let argsByName = Seq.zip paramsR namedArgs |> Seq.map (fun (n, v) -> KeyValuePair(n, v))
 
-            let gEnv = REnvironment.globalEnv Singletons.engine.Value
+            let gEnv = Environment.globalEnv Singletons.engine.Value
             callFuncByName convertToR gEnv packageName funcName argsByName varArgs
 
         | RValue.Value ->
-            let nsEnv = REnvironment.ofNamespace Singletons.engine.Value packageName
+            let nsEnv = Environment.ofNamespace Singletons.engine.Value packageName
 
-            match REnvironment.tryGetValue Singletons.engine.Value nsEnv funcName with
+            match Environment.tryGetValue Singletons.engine.Value nsEnv funcName with
             | None -> Error(sprintf "Value %s not found" funcName)
             | Some v -> v |> Promise.force Singletons.engine.Value |> Ok

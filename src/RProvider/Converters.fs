@@ -12,98 +12,133 @@ open RProvider.Common
 /// in .NET semantic wrappers.
 module Convert =
 
+    /// Represents a value extracted from R into a .NET
+    /// type, in a standard form that uses (1) arrays, and
+    /// (2) options to represent NAs.
+    type internal ExtractedFromR =
+        | Int of int option[]
+        | Float of float option[]
+        | Bool of bool option[]
+        | String of string option[]
+        | Complex of RComplex option[]
+        | Date of System.DateOnly option[]
+        | DateTime of System.DateTime option[]
+        | IntMatrix of int option[,]
+        | FloatMatrix of float option[,]
+        | BoolMatrix of bool option[,]
+        | StringMatrix of string option[,]
+        | Empty
+        | NoConverter
+
+    /// Extract an R value to a standard form
+    /// (an array of option types) for an appropriate
+    /// .NET equivalent type.
+    let internal extractFromR engine sexp =
+        match sexp with
+        | Null engine sexp -> Empty
+        | IntegerVector engine xs -> Extract.extractIntArray engine xs |> Int
+        | LogicalVector engine xs -> Extract.extractLogicalArray engine xs |> Bool
+        | CharacterVector engine xs -> Extract.extractStringArray engine xs |> String
+        | ComplexVector engine xs -> Extract.extractComplexArray engine xs |> Complex
+        | RealVector engine xs when Dates.isDate engine xs ->
+            Extract.extractDateArray engine xs
+            |> Array.map (Option.map RDate.toDateOnly)
+            |> Date
+        | RealVector engine xs when Dates.isPosixDateTime engine xs ->
+            Extract.extractDateTimeArray engine xs
+            |> Array.map (Option.map RDateTime.toDateTimeUtc)
+            |> DateTime
+        | RealVector engine xs -> Extract.extractFloatArray engine xs |> Float
+        | IntegerMatrix engine v -> Extract.extractIntMatrix engine v |> IntMatrix
+        | LogicalMatrix engine v -> Extract.extractLogicalMatrix engine v |> BoolMatrix
+        | CharacterMatrix engine v -> Extract.extractStringMatrix engine v |> StringMatrix
+        | RealMatrix engine v -> Extract.extractDoubleMatrix engine v |> FloatMatrix
+        | _ -> NoConverter
+
+    let private isList (t:System.Type) = t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<list<_>>
+    let private isOption (t:System.Type) = t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<option<_>>
+
+    /// Reshape the standard 'T option [] form of an
+    /// extracted R value into the desired output container type.
+    let internal reshape<'outType> extractedVal : 'outType option =
+        LogFile.logf "Reshaping to %A (%A)" typeof<'outType> extractedVal
+        let t = typeof<'outType>
+        let retype (x: 'b) : Option<'outType> = x |> box |> unbox<'outType> |> Some
+
+        let inline shapeArray (arr: 'a option[]) =
+            if t.IsArray then
+                let elem = t.GetElementType()
+                if isOption elem then arr |> retype
+                else
+                    if Array.exists Option.isNone arr then None
+                    else arr |> Array.map Option.get |> retype
+
+            elif isList t then
+                let elem = t.GetGenericArguments().[0]
+                if isOption elem then
+                    arr |> Array.toList |> retype
+                else
+                    if Array.exists Option.isNone arr then None
+                    else arr |> Array.map Option.get |> Array.toList |> retype
+
+            else
+                // Scalar value requested.
+                match arr, isOption t with
+                | [| v |], true -> v |> retype
+                | [| Some v |], false -> v |> retype
+                | _ -> None
+
+        let inline shapeMatrix (mat: 'a option[,]) =
+            if t.IsArray && t.GetArrayRank() = 2 then
+                let elem = t.GetElementType()
+                if isOption elem then mat |> retype
+                else
+                    let hasNA = mat |> Seq.cast<option<_>> |> Seq.exists Option.isNone
+                    if hasNA then None
+                    else
+                        let rows = mat.GetLength 0
+                        let cols = mat.GetLength 1
+                        let m2 = Array2D.init rows cols (fun i j -> Option.get mat.[i,j])
+                        m2 |> retype
+            else None
+
+        match extractedVal with
+        | NoConverter -> None
+        | Int xs -> shapeArray xs
+        | Float xs -> shapeArray xs
+        | Bool xs -> shapeArray xs
+        | String xs -> shapeArray xs
+        | Complex xs -> shapeArray xs
+        | Date xs -> shapeArray xs
+        | DateTime xs -> shapeArray xs
+        | IntMatrix m -> shapeMatrix m
+        | FloatMatrix m -> shapeMatrix m
+        | BoolMatrix m -> shapeMatrix m
+        | StringMatrix m -> shapeMatrix m
+        | Empty ->
+            if t.IsArray then
+                let elem = t.GetElementType()
+                let empty = System.Array.CreateInstance(elem, 0)
+                empty |> retype
+
+            elif isList t then
+                let elem = t.GetGenericArguments().[0]
+                let empty =
+                    let listType = typedefof<list<_>>.MakeGenericType(elem)
+                    System.Activator.CreateInstance(listType, true)
+                empty |> retype
+
+            else
+                None
+
     /// Default conversions from R to .NET primitive types or
     /// simple .NET representations provided by RBridge (for example,
     /// for RComplex). The values are extracted into .NET memory space.
+    /// If 'outType is obj, then returns an array-based representation.
     let tryFromRStructural<'outType> (engine: NativeApi.RunningEngine) (sexp: SymbolicExpression) : 'outType option =
-
-        let retype (x: 'b) : Option<'outType> = x |> box |> unbox<'outType> |> Some
-        let at = typeof<'outType>
-
-        match sexp with
-
-        // To array:
-        | IntegerVector engine xs when at = typeof<int []> -> xs |> Extract.extractIntArray engine |> retype |> unbox
-        | RealVector engine xs when at = typeof<float []> -> xs |> Extract.extractFloatArray engine |> retype |> unbox
-        | LogicalVector engine xs when at = typeof<bool option []> ->
-            xs |> Extract.extractLogicalArray engine |> retype |> unbox
-        | CharacterVector engine xs when at = typeof<string []> ->
-            xs |> Extract.extractStringArray engine |> retype |> unbox
-        | ComplexVector engine xs when at = typeof<RComplex []> ->
-            xs |> Extract.extractComplexArray engine |> retype |> unbox
-        | RealVector engine xs when Dates.isDate engine xs && at = typeof<System.DateOnly[]> ->
-            Extract.extractDateArray engine xs |> Array.map RDate.toDateOnly |> retype |> unbox
-        | RealVector engine xs when Dates.isPosixDateTime engine xs && at = typeof<RDateTime[]> ->
-            Extract.extractDateTimeArray engine xs |> Array.map RDateTime.toDateTimeUtc |> retype |> unbox
-
-        // To list:
-        | IntegerVector engine xs when at = typeof<int list> ->
-            xs |> Extract.extractIntArray engine |> Array.toList |> retype |> unbox
-        | RealVector engine xs when at = typeof<float list> ->
-            xs |> Extract.extractFloatArray engine |> Array.toList |> retype |> unbox
-        | LogicalVector engine xs when at = typeof<bool option list> ->
-            xs |> Extract.extractLogicalArray engine |> Array.toList |> retype |> unbox
-        | CharacterVector engine xs when at = typeof<string list> ->
-            xs |> Extract.extractStringArray engine |> Array.toList |> retype |> unbox
-        | ComplexVector engine xs when at = typeof<RComplex list> ->
-            xs |> Extract.extractComplexArray engine |> Array.toList |> retype |> unbox
-        | RealVector engine xs when Dates.isDate engine xs && at = typeof<RDate list> ->
-            Extract.extractDateArray engine xs |> Array.map RDate.toDateOnly |> Array.toList |> retype |> unbox
-        | RealVector engine xs when Dates.isPosixDateTime engine xs && at = typeof<RDateTime list> ->
-            Extract.extractDateTimeArray engine xs |> Array.map RDateTime.toDateTimeUtc |> Array.toList |> retype |> unbox
-
-        // To atomic:
-        | IntegerVector engine xs when at = typeof<int> ->
-            xs |> Extract.extractIntArray engine |> Array.head |> retype |> unbox
-        | RealVector engine xs when at = typeof<float> ->
-            xs |> Extract.extractFloatArray engine |> Array.head |> retype |> unbox
-        | LogicalVector engine xs when at = typeof<bool option> ->
-            xs |> Extract.extractLogicalArray engine |> Array.head |> retype |> unbox
-        | CharacterVector engine xs when at = typeof<string> ->
-            xs |> Extract.extractStringArray engine |> Array.head |> retype |> unbox
-        | ComplexVector engine xs when at = typeof<RComplex> ->
-            xs |> Extract.extractComplexArray engine |> Array.head |> retype |> unbox
-        | RealVector engine xs when Dates.isDate engine xs && at = typeof<RDate> ->
-            Extract.extractDateArray engine xs |> Array.map RDate.toDateOnly |> Array.head |> retype |> unbox
-        | RealVector engine xs when Dates.isPosixDateTime engine xs && at = typeof<RDateTime> ->
-            Extract.extractDateTimeArray engine xs |> Array.map RDateTime.toDateTimeUtc |> Array.head |> retype |> unbox
-
-        // To matrix:
-        | CharacterMatrix engine v when at = typeof<string [,]> ->
-            v |> Extract.extractStringMatrix engine |> retype |> unbox
-        | IntegerMatrix engine v when at = typeof<int [,]> -> v |> Extract.extractIntMatrix engine |> retype |> unbox
-        | LogicalMatrix engine v when at = typeof<bool option [,]> ->
-            v |> Extract.extractLogicalMatrix engine |> retype |> unbox
-
-        // Empty vectors in R are represented as null
-        | Null engine _ when at = typeof<string list> -> retype <| List.empty<string>
-        | Null engine _ when at = typeof<string []> -> retype <| Array.empty<string>
-        | Null engine _ when at = typeof<RComplex list> -> retype <| List.empty<RComplex>
-        | Null engine _ when at = typeof<RComplex []> -> retype <| Array.empty<RComplex>
-        | Null engine _ when at = typeof<int list> -> retype <| List.empty<int>
-        | Null engine _ when at = typeof<int []> -> retype <| Array.empty<int>
-        | Null engine _ when at = typeof<bool option list> -> retype <| List.empty<bool>
-        | Null engine _ when at = typeof<bool option []> -> retype <| Array.empty<bool>
-        | Null engine _ when at = typeof<double list> -> retype <| List.empty<double>
-        | Null engine _ when at = typeof<double []> -> retype <| Array.empty<double>
-
-        | IntegerVector engine xs when at = typeof<obj> -> xs |> Extract.extractIntArray engine |> retype |> unbox
-        | RealVector engine xs when at = typeof<obj> -> xs |> Extract.extractFloatArray engine |> retype |> unbox
-        | LogicalVector engine xs when at = typeof<obj> -> xs |> Extract.extractLogicalArray engine |> retype |> unbox
-        | CharacterVector engine xs when at = typeof<obj> -> xs |> Extract.extractStringArray engine |> retype |> unbox
-        | ComplexVector engine xs when at = typeof<obj> -> xs |> Extract.extractComplexArray engine |> retype |> unbox
-        | CharacterMatrix engine v when at = typeof<obj> -> v |> Extract.extractStringMatrix engine |> retype |> unbox
-        | IntegerMatrix engine v when at = typeof<obj> -> v |> Extract.extractIntMatrix engine |> retype |> unbox
-        | LogicalMatrix engine v when at = typeof<obj> -> v |> Extract.extractLogicalMatrix engine |> retype |> unbox
-        | Null engine _ when at = typeof<obj> -> List.empty |> retype |> unbox
-
-        | _ ->
-            LogFile.logf
-                "Cannot convert SexpType %A to %s"
-                (SymbolicExpression.getType engine sexp)
-                typeof<'outType>.FullName
-
-            None
+        if typeof<'outType> = typeof<obj> then
+            Some (box <| extractFromR engine sexp) |> unbox
+        else extractFromR engine sexp |> reshape<'outType>
 
     /// Convert a value from a symbolic expression into a wrapped
     /// R type included in RProvider. The types are shaped so as to
@@ -127,29 +162,6 @@ module Convert =
         | S4ObjectType
         | R6ObjectType -> None
 
-    let private toDateTimeVector (eng: NativeApi.RunningEngine) (dates: System.DateTime seq) =
-        let converted =
-            dates |> Seq.map(fun d ->        
-                match d.Kind with
-                | System.DateTimeKind.Utc -> d, Some "UTC"
-                | System.DateTimeKind.Local -> d.ToUniversalTime(), Some System.TimeZoneInfo.Local.Id
-                | System.DateTimeKind.Unspecified -> System.DateTime.SpecifyKind(d, System.DateTimeKind.Utc), Some "UTC"
-                | _ -> failwith "Unexpected date time kind %i" d.Kind
-            )
-            |> Seq.toArray
-        let seconds = converted |> Array.map(fun (utc,_) -> (utc - System.DateTime(1970,1,1,0,0,0,System.DateTimeKind.Utc)).TotalSeconds)
-        let timezones = converted |> Array.map snd |> Array.distinct
-        let timezone =
-            match timezones with
-            | [| tz |] -> tz
-            | _ -> failwith "Cannot mix timezones or pass an empty date list as a date-time vector to R."
-        Create.dateTimeVector eng seconds timezone
-
-    let private toRDateVector engine (dates: System.DateOnly seq) =
-        dates
-        |> Seq.map (fun d -> d.DayNumber - RDate.unixEpochDayNumber)
-        |> Create.dateVector engine
-
     let toR (eng: NativeApi.RunningEngine) (value: obj) : SymbolicExpression =
         match value with
 
@@ -160,27 +172,53 @@ module Convert =
 
         // .NET primitives:
         | null -> { ptr = eng.Api.nilValue }
-        | :? string as s -> Create.stringVector eng [| s |]
-        | :? array<string> as xs -> Create.stringVector eng xs
-        | :? list<string> as xs -> Create.stringVector eng xs
-        | :? int as i -> Create.intVector eng [| i |]
-        | :? array<int> as xs -> Create.intVector eng xs
-        | :? list<int> as xs -> Create.intVector eng xs
-        | :? float as f -> Create.realVector eng [| f |]
-        | :? array<float> as xs -> Create.realVector eng xs
-        | :? list<float> as xs -> Create.realVector eng xs
-        | :? bool as b -> Create.logicalVector eng [| b |]
-        | :? array<bool> as xs -> Create.logicalVector eng xs
-        | :? list<bool> as xs -> Create.logicalVector eng xs
-        | :? RComplex as c -> Create.complexVector eng [| c |]
-        | :? array<RComplex> as cs -> Create.complexVector eng cs
-        | :? list<RComplex> as cs -> Create.complexVector eng cs
-        | :? System.DateOnly as d -> toRDateVector eng [| d |]
-        | :? array<System.DateOnly> as d -> toRDateVector eng d
-        | :? list<System.DateOnly> as d -> toRDateVector eng d
-        | :? System.DateTime as d -> toDateTimeVector eng [ d ]
-        | :? array<System.DateTime> as d -> toDateTimeVector eng d
-        | :? list<System.DateTime> as d -> toDateTimeVector eng d
+        | :? string as s -> Create.stringVector eng [| Some s |]
+        | :? array<string> as xs -> Create.stringVector eng (Array.map Some xs)
+        | :? list<string> as xs -> Create.stringVector eng (List.map Some xs)
+        | :? array<string option> as xs -> Create.stringVector eng xs
+        | :? list<string option> as xs -> Create.stringVector eng xs
+        | :? int as i -> Create.intVector eng [| Some i |]
+        | :? array<int> as xs -> Create.intVector eng (Array.map Some xs)
+        | :? list<int> as xs -> Create.intVector eng (List.map Some xs)
+        | :? array<int option> as xs -> Create.intVector eng xs
+        | :? list<int option> as xs -> Create.intVector eng xs
+        | :? float as f -> Create.realVector eng [| Some f |]
+        | :? array<float> as xs -> Create.realVector eng (Array.map Some xs)
+        | :? list<float> as xs -> Create.realVector eng (List.map Some xs)
+        | :? array<float option> as xs -> Create.realVector eng xs
+        | :? list<float option> as xs -> Create.realVector eng xs
+        | :? bool as b -> Create.logicalVector eng [| Some b |]
+        | :? array<bool> as xs -> Create.logicalVector eng (Array.map Some xs)
+        | :? list<bool> as xs -> Create.logicalVector eng (List.map Some xs)
+        | :? array<bool option> as xs -> Create.logicalVector eng xs
+        | :? list<bool option> as xs -> Create.logicalVector eng xs
+        | :? System.DateOnly as d -> Create.dateVector eng [| d |> RDate.fromDateOnly |> Some |]
+        | :? array<System.DateOnly> as d -> Create.dateVector eng (Array.map(RDate.fromDateOnly >> Some) d)
+        | :? list<System.DateOnly> as d -> Create.dateVector eng (List.map(RDate.fromDateOnly >> Some) d)
+        | :? array<System.DateOnly option> as d -> Create.dateVector eng (Array.map(Option.map RDate.fromDateOnly) d)
+        | :? list<System.DateOnly option> as d -> Create.dateVector eng (List.map(Option.map RDate.fromDateOnly) d)
+        | :? System.DateTime as d -> Create.dateTimeVector eng [ d |> RDateTime.fromDateTime |> Some ]
+        | :? array<System.DateTime> as d -> Create.dateTimeVector eng (Array.map(RDateTime.fromDateTime >> Some) d)
+        | :? list<System.DateTime> as d -> Create.dateTimeVector eng (List.map(RDateTime.fromDateTime >> Some) d)
+        | :? array<System.DateTime option> as d -> Create.dateTimeVector eng (Array.map(Option.map RDateTime.fromDateTime) d)
+        | :? list<System.DateTime option> as d -> Create.dateTimeVector eng (List.map(Option.map RDateTime.fromDateTime) d)
+
+        // R structural types:
+        | :? RComplex as c -> Create.complexVector eng [| Some c |]
+        | :? array<RComplex> as cs -> Create.complexVector eng (Array.map Some cs)
+        | :? list<RComplex> as cs -> Create.complexVector eng (List.map Some cs)
+        | :? array<RComplex option> as cs -> Create.complexVector eng cs
+        | :? list<RComplex option> as cs -> Create.complexVector eng cs
+        | :? RDate as d -> Create.dateVector eng [| Some d |]
+        | :? array<RDate> as d -> Create.dateVector eng (Array.map Some d)
+        | :? list<RDate> as d -> Create.dateVector eng (List.map Some d)
+        | :? array<RDate option> as d -> Create.dateVector eng d
+        | :? list<RDate option> as d -> Create.dateVector eng d
+        | :? RDateTime as d -> Create.dateTimeVector eng [ Some d ]
+        | :? array<RDateTime> as d -> Create.dateTimeVector eng (Array.map Some d)
+        | :? list<RDateTime> as d -> Create.dateTimeVector eng (List.map Some d)
+        | :? array<RDateTime option> as d -> Create.dateTimeVector eng d
+        | :? list<RDateTime option> as d -> Create.dateTimeVector eng d
 
         // Pass-through of RProvider semantic types:
         | :? RSemantic<_> as sem -> sem.Sexp

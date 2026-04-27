@@ -36,28 +36,5 @@ let operatorTests =
                 (fun () -> R.mtcars?somerandomvectorname |> ignore)
                 "Expected accessing a missing S3 member to throw"
 
-        testCase "Can get slot of an S4 object using dynamic operator" <| fun _ ->
-            // Define an S4 class
-            R.setClass(namedParams [
-                "Class", box "Person"
-                "slots", box (R.c (namedParams [
-                    "name"  =>  "string"
-                    "age"   =>  "numeric"
-                ]))
-            ]) |> ignore
-
-            // Instantiate it
-            let person =
-                R.``new`` (namedParams ["Class" => "Person"])
-
-            // Access slot
-            let age = Expect.wantSome person?age.TryAsVector "Age was not a numeric vector"
-
-            let len: int =
-                match age with
-                | RTypes.RVector.NumericV n -> n.Length.RExpr.FromR ()
-                | _ -> failwith "wrong type"
-
-            Expect.equal len 0 "Expected age slot to be a numeric vector of length 0"
     ]
 

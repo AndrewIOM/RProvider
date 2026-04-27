@@ -70,7 +70,7 @@ module RTypes =
         let passThrough _ (v: obj) = v :?> SymbolicExpression
 
         let baseOp (fn: string) (a: SymbolicExpression) tryMake =
-            let rEnv = REnvironment.globalEnv Singletons.engine.Value
+            let rEnv = Environment.globalEnv Singletons.engine.Value
             let sexp = Call.callFuncByName passThrough rEnv "base" fn Seq.empty [| a |]
 
             match sexp with
@@ -78,7 +78,7 @@ module RTypes =
             | Error e -> failwith e
 
         let baseOp2 (fn: string) (a: SymbolicExpression) (b: SymbolicExpression) tryMake =
-            let rEnv = REnvironment.globalEnv Singletons.engine.Value
+            let rEnv = Environment.globalEnv Singletons.engine.Value
             let sexp = Call.callFuncByName passThrough rEnv "base" fn Seq.empty [| a; b |]
 
             match sexp with
@@ -96,7 +96,7 @@ module RTypes =
 
             /// Get a scalar item by R index (1..n based, not zero based).
             member this.Item(i: int, mk) : 'T =
-                let idxSexp = Create.intVector Singletons.engine.Value [| i + 1 |]
+                let idxSexp = Create.intVector Singletons.engine.Value [| Some <| i + 1 |]
                 R.baseOp2 "[[" this.Sexp idxSexp mk
 
             /// If a vector is named, get the named item from the vector.
@@ -134,10 +134,10 @@ module RTypes =
                 |> fun s -> s.Sexp
                 |> Extract.extractFloatArray Singletons.engine.Value
                 |> Array.head
-                |> (*) (LanguagePrimitives.FloatWithMeasure<'u> 1.)
+                |> Option.map ((*) (LanguagePrimitives.FloatWithMeasure<'u> 1.))
 
             let fromFloat (value: float<'u>) : RRealScalar<'u> option =
-                Create.realVector Singletons.engine.Value [| value |] |> tryFromExpression
+                Create.realVector Singletons.engine.Value [| Some value |] |> tryFromExpression
 
             type RRealScalar<'u> with
                 static member Add (a: RRealScalar<'u>) (b: RRealScalar<'u>) : RRealScalar<'u> =
@@ -176,6 +176,13 @@ module RTypes =
             let tryFromExpression sexp = { Inner = { Sexp = sexp } } |> Some
 
             type RRealVector<'u> with
+
+                static member Lift(scalar: Scalar.RRealScalar<'u>, vector: RRealVector<'u>) : RRealVector<'u> =
+                    tryFromExpression scalar.Sexp
+                    |> Option.defaultWith(fun _ -> failwith "Could not place scalar into a vector")
+
+                static member Lift(vec1: RRealVector<'u>, vec2: RRealVector<'u>) = vec1
+
                 static member Add (a: RRealVector<'u>) (b: RRealVector<'u>) : RRealVector<'u> =
                     R.baseOp2 "+" a.Inner.Sexp b.Inner.Sexp tryFromExpression
 
@@ -238,7 +245,7 @@ module RTypes =
                 |> RExprWrapper.toRProvider
 
             member this.Item(name: string) =
-                SymbolicExpression.getListItemByName Singletons.engine.Value name this.sexp
+                SymbolicExpression.getListItemByName Singletons.engine.Value (Some name) this.sexp
                 |> RExprWrapper.toRProvider
 
             member this.Length =
@@ -250,7 +257,10 @@ module RTypes =
         type RFactor =
             internal { Sexp: SymbolicExpression }
             member this.AsRExpr = this.Sexp |> RExprWrapper.toRProvider
-            member this.Levels = lazy (Factor.trylevels Singletons.engine.Value this.Sexp)
+            member this.Levels = lazy (
+                Factor.trylevels Singletons.engine.Value this.Sexp
+                |> Option.map(fun levels ->
+                    levels |> List.map (Option.defaultWith(fun _ -> failwithf "Levels contained NA, which is not permitted by R."))))
 
             member this.Indices = lazy (Extract.extractIntArray Singletons.engine.Value this.Sexp)
 
@@ -259,7 +269,14 @@ module RTypes =
                     (this.Levels.Value
                     |> Option.defaultWith (fun _ -> failwith "Could not get levels for factor")
                     |> fun levels ->
-                        this.Indices.Value |> Array.map (fun i -> levels.[i - 1]))
+                        this.Indices.Value
+                        |> Array.map (fun idx ->
+                            match idx with
+                            | Some idx when idx >= 1 && idx <= levels.Length ->
+                                levels.[idx - 1]
+                            | None -> "NA"
+                            | _ -> failwith "Invalid index requested for factor."
+                        ))
 
         let tryFromExpression expr : RFactor option =
             match expr with
@@ -323,23 +340,28 @@ module RTypes =
                 | ActivePatterns.IntegerVector Singletons.engine.Value _ ->
                     let ints = Extract.extractIntArray Singletons.engine.Value rn
                     if ints.Length = 2
-                    then 
-                        if ints.[0] = -2147483648 && ints.[1] < 0
-                        then
-                            let n = -ints.[1]
-                            [| 1 .. n |]
-                        else ints
+                    then
+                        // If the first int is NA and the second is negative, is compact encoding.
+                        match ints.[0], ints.[1] with
+                        | None, Some i1 ->
+                            if i1 < 0
+                            then
+                                let n = -i1
+                                [| 1 .. n |] |> Array.map Some
+                            else ints
+                        | _ -> ints
                     else ints
-                    |> Array.map(sprintf "%i")
+                    |> Array.map(Option.map (sprintf "%i"))
                 | _ -> Array.empty
             | None -> Array.empty
+            |> Array.map (Option.defaultValue "NA")
 
         let rowCount df =
             rowNames df |> Seq.length
 
         let tryFromExpression (sexp: SymbolicExpression) =
             match SymbolicExpression.getClasses Singletons.engine.Value sexp with
-            | ls when ls |> List.contains "data.frame" -> Some { Sexp = sexp }
+            | ls when ls |> List.contains (Some "data.frame") -> Some { Sexp = sexp }
             | _ -> None
 
         let getColumnNames frame =
@@ -352,7 +374,7 @@ module RTypes =
             let names = getColumnNames frame
             let colIndex =
                 names
-                |> Array.tryFindIndex ((=) name)
+                |> Array.tryFindIndex ((=) (Some name))
                 |> Option.defaultWith (fun () ->
                     failwithf "Column '%s' not found in R data.frame" name)
             let colSexp = SymbolicExpression.getVectorElement Singletons.engine.Value frame.Sexp colIndex

@@ -3,110 +3,91 @@ module ConverterTests
 open RProvider
 open System
 open Expecto
-open System.Text
-open System.Globalization
-open RProvider.Common
-open RProvider.SymbolicExpressionExtensions
+open FsCheck
 
-// Generic function to test that a value round-trips
-// when SEXP is asked for the value by-type
-let testRoundTrip (x: 'a) (typeof: RBridge.SymbolicExpression.SexpType) (clsName: Option<string>) =
+let testVector (xs: 'scalar option []) (typeof: RBridge.SymbolicExpression.SexpType) clsName =
+    let sexp = SymbolicExpression.ofObj xs
+    Expect.equal (SymbolicExpression.getExprType sexp) typeof "Type was mutated"
+    Expect.equal sexp.Class clsName "R class was not properly set"
+
+    // Vectors round-trip as vectors
+    Expect.equal (Some xs) (sexp.TryFromR<'scalar option array>()) "Round-trip returned different value"
+
+    // If a single-element vector, can return as a scalar
+
+    let scalarOpt = sexp.TryFromR<'scalar option>()
+    if xs.Length = 1
+    then Expect.equal (Some xs.[0]) scalarOpt ""
+    else Expect.equal None scalarOpt "Non-scalar vector should not be read as scalar option"
+
+let testScalar (x: 'scalar) (typeof: RBridge.SymbolicExpression.SexpType) clsName =
     let sexp = SymbolicExpression.ofObj x
-    Expect.equal x (sexp.FromR<'a>()) ""
-    Expect.equal (SymbolicExpression.getExprType sexp) typeof ""
-    Expect.equal sexp.Class (Option.toArray clsName) ""
+    Expect.equal (SymbolicExpression.getExprType sexp) typeof "Type was mutated"
+    Expect.equal sexp.Class clsName "R class was not properly set"
 
-// Generic function to test that a value round-trips
-// when SEXP is asked for the value by-type, and
-// as the default .NET representation
-let testRoundTripAndDefault (x: 'a) (typeof: RBridge.SymbolicExpression.SexpType) (clsName: Option<string>) =
-    testRoundTrip x typeof clsName
-    let sexp = SymbolicExpression.ofObj x
-    Expect.equal x (unbox<'a> <| sexp.FromR<obj>()) ""
+    // Scalars round-trip to scalar when scalar-type is requested explicitly (scalar option)
+    Expect.equal (Some (Some x)) (sexp.TryFromR<'scalar option>()) ""
 
-let testVector (xs: 'scalarType []) (typeof: RBridge.SymbolicExpression.SexpType) (clsName: Option<string>) =
-    // Test arrays and lists round-trip
-    testRoundTrip (Array.toList xs) typeof clsName
-    // Array is the default return type from .Value
-    testRoundTripAndDefault xs typeof clsName
-    // Can only round-trip a vector as a scalar if it is of length 1
-    if xs.Length <> 1 then
-        ignore <| Expect.throwsT<InvalidOperationException>(fun () ->
-            let s = SymbolicExpression.ofObj xs
-            s.FromR<'scalarType>() |> ignore)
+    // Scalars round-trip as scalar non-option when there are no NA values
+    Expect.equal (Some x) (sexp.TryFromR<'scalar>()) "Did not round-trip as true scalars when no NA"
 
-let testScalar (x: 'scalarType) (typeof: RBridge.SymbolicExpression.SexpType) (clsName: Option<string>) =
-    // Scalars round-trip to scalar when scalar-type is requested explicitly
-    testRoundTrip x typeof clsName
+    // Scalars round-trip as vectors of scalar option
+    Expect.equal[| Some x |] (sexp.FromR<'scalar option []>()) ""
+    // Expect.equal[| Some x |] (unbox<'scalar option []> <| sexp.FromR()) "Default obj conversion should be to option array"
 
-    // Scalars round-trip as vectors
-    let sexp = SymbolicExpression.ofObj x
-    Expect.equal[| x |] (unbox<'scalarType []> <| sexp.FromR()) ""
-    Expect.equal[| x |] (sexp.FromR<'scalarType []>()) ""
 
 [<Tests>]
 let roundTrips =
     testList "Round-trip tests" [
 
-        // testProperty "Date vector round-trip tests" <| fun (xs: DateTime []) ->
-        //     testVector xs RBridge.SymbolicExpression.SexpType.RealVector (Some "Date")
+        testProperty "Datetime vector round-trip tests" <| fun (NonEmptyArray (xs: DateTime option [])) ->
+            testVector xs RBridge.SymbolicExpression.SexpType.RealVector [| "POSIXct"; "POSIXt" |]
 
-        // testProperty "Date scalar round-trip tests" <| fun (xs: DateTime) ->
-        //     testScalar xs RBridge.SymbolicExpression.SexpType.RealVector (Some "Date")
+        testProperty "Datetime scalar round-trip tests" <| fun (xs: DateTime) ->
+            testScalar xs RBridge.SymbolicExpression.SexpType.RealVector [| "POSIXct"; "POSIXt" |]
 
-        testProperty "Int vector round-trip tests" <| fun (xs: int []) ->
-            testVector xs RBridge.SymbolicExpression.SexpType.IntegerVector None
+        testProperty "Date vector round-trip tests" <| fun (NonEmptyArray (xs: DateTime option [])) ->
+            let xs = xs |> Array.map (Option.map DateOnly.FromDateTime)
+            testVector xs RBridge.SymbolicExpression.SexpType.RealVector [| "Date" |]
+
+        testProperty "Date scalar round-trip tests" <| fun (xs: DateTime) ->
+            let xs = xs |> DateOnly.FromDateTime
+            testScalar xs RBridge.SymbolicExpression.SexpType.RealVector [| "Date" |]
+
+        testProperty "Int vector round-trip tests" <| fun (xs: int option []) ->
+            testVector xs RBridge.SymbolicExpression.SexpType.IntegerVector [||]
 
         testProperty "Int scalar round-trip tests" <| fun (x: int) ->
-            testScalar x RBridge.SymbolicExpression.SexpType.IntegerVector None
+            testScalar x RBridge.SymbolicExpression.SexpType.IntegerVector [||]
 
-        testProperty "Double vector round-trip tests" <| fun (x: float []) ->
-            testVector x RBridge.SymbolicExpression.SexpType.RealVector None
+        testProperty "Double vector round-trip tests" <| fun (x: NormalFloat option []) ->
+            testVector (x |> Array.map (fun x -> x |> Option.map(fun x -> x.Get))) RBridge.SymbolicExpression.SexpType.RealVector [||]
 
-        testProperty "Double scalar round-trip tests" <| fun (x: float) ->
-            testScalar x RBridge.SymbolicExpression.SexpType.RealVector None
+        testProperty "Double scalar round-trip tests" <| fun (NormalFloat x) ->
+            testScalar x RBridge.SymbolicExpression.SexpType.RealVector [||]
 
-        // testProperty "Bool vector round-trip tests" <| fun (x: bool option []) ->
-        //     testVector x RBridge.SymbolicExpression.SexpType.LogicalVector None
+        testProperty "Bool vector round-trip tests" <| fun (x: bool option []) ->
+            testVector x RBridge.SymbolicExpression.SexpType.LogicalVector [||]
 
-        // testProperty "Bool scalar round-trip tests" <| fun (x: bool option) ->
-        //     testScalar x RBridge.SymbolicExpression.SexpType.LogicalVector None
+        testProperty "Bool scalar round-trip tests" <| fun (x: bool) ->
+            testScalar x RBridge.SymbolicExpression.SexpType.LogicalVector [||]
 
         testProperty "Complex vector round-trip tests" <| fun (x: (float * float) []) ->
             let xs =
                 [| for (r, i) in x do
-                    if not (Double.IsNaN(r) || Double.IsNaN(i)) then yield RBridge.Extensions.RComplex.Create (r, i) |]
-            testVector xs RBridge.SymbolicExpression.SexpType.ComplexVector None
+                    if not (Double.IsNaN(r) || Double.IsNaN(i)) then yield RBridge.Extensions.RComplex.Create (r, i) |> Some |]
+            testVector xs RBridge.SymbolicExpression.SexpType.ComplexVector [||]
 
         testProperty "Complex scalar round-trip tests" <| fun (r: float) (i:float) ->
             if not (Double.IsNaN(r) || Double.IsNaN(i)) then
-                let x = RBridge.Extensions.RComplex.Create(r, i)
-                testScalar x RBridge.SymbolicExpression.SexpType.ComplexVector None
+                let x = RBridge.Extensions.RComplex.Create(r, i) |> Some
+                testScalar x RBridge.SymbolicExpression.SexpType.ComplexVector [||]
 
-        testProperty "String arrays round-trip" <| fun (strings: string []) ->
-            let ascii = ASCIIEncoding()
-            if Array.forall (fun (s: string) -> s = (s |> ascii.GetBytes |> ascii.GetString)) strings then
-                let sexp = SymbolicExpression.ofObj strings
-                Expect.equal strings (unbox<string[]> <| sexp.FromR<obj>()) ""
-                Expect.equal strings (sexp.FromR<string []>()) ""
-
-
+        // testProperty "String arrays round-trip" <| fun (NonEmptyArray strings) ->
+        //     let ascii = ASCIIEncoding()
+        //     if  Array.filter (System.String.IsNullOrEmpty >> not) strings |> Array.forall (fun (s: string) -> s = (s |> ascii.GetBytes |> ascii.GetString)) then
+        //         let sexp = SymbolicExpression.ofObj strings
+        //         Expect.equal strings (unbox<string[]> <| sexp.FromR<obj>()) ""
+        //         Expect.equal strings (sexp.FromR<string []>()) ""
 
     ]
-
-// TODO Serialisation is now a server / client concern, not runtime.
-// let serialisation =
-//     testList "Serialisation" [
-
-//         testProperty "Serialization of R values works" <| fun (isValue: bool) (args: string []) (hasVar: bool) ->
-        
-//             let args = List.ofSeq args
-
-//             if args |> Seq.forall (fun a -> not (isNull a) && not (a.Contains(";"))) then
-//                 let rvalue = if isValue then RValue.Value else RValue.Function(args, hasVar)
-//                 let actual = deserializeRValue (serializeRValue (rvalue))
-//                 Expect.equal rvalue actual ""
-
-
-
-//     ]

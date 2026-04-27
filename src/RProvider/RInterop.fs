@@ -32,7 +32,7 @@ module RInterop =
     /// List packages available in the loaded R instance.
     let getPackages () : string [] =
         LogFile.logf "Communicating with R to get packages"
-        let globEnv = REnvironment.globalEnv Singletons.engine.Value
+        let globEnv = Environment.globalEnv Singletons.engine.Value
 
         match Evaluate.eval globEnv ".packages(all.available=T)" with
         | Error e ->
@@ -40,12 +40,15 @@ module RInterop =
             Array.empty
         | Ok v ->
             match v with
-            | CharacterVector Singletons.engine.Value v -> v |> Extract.extractStringArray Singletons.engine.Value
+            | CharacterVector Singletons.engine.Value v ->
+                v
+                |> Extract.extractStringArray Singletons.engine.Value
+                |> Array.choose id
             | _ -> failwith "Unexpected result getting packages"
 
     /// Get the description for a particular package from R.
     let getPackageDescription packageName : string =
-        let globEnv = REnvironment.globalEnv Singletons.engine.Value
+        let globEnv = Environment.globalEnv Singletons.engine.Value
 
         Evaluate.eval globEnv (sprintf "packageDescription(\"%s\")$Description" packageName)
         |> Result.bind (SymbolicExpression.tryGetValue >> ofOption "[Could not extract package description]")
@@ -54,7 +57,7 @@ module RInterop =
     /// Read a package's metadata to extract descriptions
     /// of each user-facing function.
     let getFunctionDescriptions packageName : (string * string) array =
-        let globEnv = REnvironment.globalEnv Singletons.engine.Value
+        let globEnv = Environment.globalEnv Singletons.engine.Value
 
         let evalStringArray expr : Result<string [], string> =
             Evaluate.eval globEnv expr
@@ -70,7 +73,7 @@ module RInterop =
 
     let loadPackage packageName : unit =
         if not (Singletons.loadedPackages.Contains packageName) then
-            let globalEnv = REnvironment.globalEnv Singletons.engine.Value
+            let globalEnv = Environment.globalEnv Singletons.engine.Value
 
             let result =
                 Evaluate.eval globalEnv ("require(" + packageName + ")")
@@ -133,11 +136,11 @@ module RInterop =
     let getBindings (packageName: string) =
 
         // Get the package environment (not namespace environment)
-        let pkgEnv = REnvironment.ofPackage Singletons.engine.Value packageName
+        let pkgEnv = Environment.ofPackage Singletons.engine.Value packageName
 
         let names =
             Evaluate.eval pkgEnv "ls(all.names=TRUE)"
-            |> Result.map (Extract.extractStringArray Singletons.engine.Value)
+            |> Result.map (Extract.extractStringArray Singletons.engine.Value >> Array.choose id)
             |> Result.defaultValue [||]
 
         names
@@ -150,7 +153,7 @@ module RInterop =
                     let info = bindingInfo forced
                     Some(name, serializeRValue info))
 
-    let globalEnvironment () = REnvironment.globalEnv Singletons.engine.Value
+    let globalEnvironment () = Environment.globalEnv Singletons.engine.Value
 
     /// Given an R environment scope, call a function given the
     /// named and unnamed arguments.
@@ -209,7 +212,7 @@ module Printing =
         let temp = System.IO.Path.GetTempFileName()
 
         try
-            let env = REnvironment.globalEnv Singletons.engine.Value
+            let env = Environment.globalEnv Singletons.engine.Value
             callSink env (Some temp)
             callPrint env sexp
             callSink env None

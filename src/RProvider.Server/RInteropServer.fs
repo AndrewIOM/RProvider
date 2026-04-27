@@ -80,7 +80,7 @@ module internal EventLoop =
 type RInteropServer() =
     interface IRInteropServer with
 
-        member x.InitializationErrorMessage() =
+        member __.InitializationErrorMessage() =
             // No need for event loop here, because this is initialized
             // when the event loop starts (so initResult has value now)
             match Singletons.rLocation.Value with
@@ -89,17 +89,17 @@ type RInteropServer() =
 
         member __.GetPackages() = EventLoop.runServerCommandSafe getPackages
 
-        member __.LoadPackage(package) = EventLoop.runServerCommandSafe <| fun () -> loadPackage package
+        member __.LoadPackage package = EventLoop.runServerCommandSafe <| fun () -> loadPackage package
 
-        member __.GetBindings(package) = EventLoop.runServerCommandSafe <| fun () -> getBindings package
+        member __.GetBindings package = EventLoop.runServerCommandSafe <| fun () -> getBindings package
 
         member __.GetFunctionDescriptions(package: string) =
             EventLoop.runServerCommandSafe <| fun () -> getFunctionDescriptions package
 
-        member __.GetPackageDescription(package) =
+        member __.GetPackageDescription package =
             EventLoop.runServerCommandSafe <| fun () -> getPackageDescription package
 
-        member __.GetRDataSymbols(file) =
+        member __.GetRDataSymbols file =
             EventLoop.runServerCommandSafe
             <| fun () ->
                 file

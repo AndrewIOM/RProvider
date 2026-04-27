@@ -79,7 +79,7 @@ module SymbolicExpression =
         | None -> [||]
         | Some attrs ->
             match attrs with
-            | CharacterVector Singletons.engine.Value v -> v |> Extract.extractStringArray Singletons.engine.Value
+            | CharacterVector Singletons.engine.Value v -> v |> Extract.extractStringArray Singletons.engine.Value |> Array.map (Option.defaultValue "NA")
             | _ -> [||]
 
     /// Pass a value from R memory space into .NET, represented
@@ -101,7 +101,7 @@ module SymbolicExpression =
         | Some r -> r
         | None -> failwith "Could not convert R expression to a semantic type."
 
-    let listItem name sexp = SymbolicExpression.getListItemByName Singletons.engine.Value name sexp
+    let listItem name sexp = SymbolicExpression.getListItemByName Singletons.engine.Value (Some name) sexp
 
     let getMember name sexp =
         match sexp with
