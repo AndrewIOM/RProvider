@@ -48,6 +48,12 @@ jobs:
       run: dotnet tool restore
     - name: Restore paket dependencies
       run: dotnet paket restore
+    - name: Build main project
+      run: dotnet build
+      working-directory: src/RProvider/
+    - name: Pack main project
+      run: dotnet pack
+      working-directory: src/RProvider/
     - name: Build and test
       run: dotnet fsi build.fsx
     - name: Test upload local nuget
@@ -56,7 +62,8 @@ jobs:
       with:
         name: native-${{ matrix.os }}-${{ matrix.arch }}
         path: |
-          local-packages/RProvider.0.0.1-local.nupkg
+          local-packages/*.nupkg
+          src/RProvider/bin/Release/*.nupkg
     - name: Check R log
       if: ${{ always() }}
       run: cat rlog.txt
