@@ -52,7 +52,6 @@ jobs:
       run: dotnet restore
     - name: Build main project
       run: dotnet build
-      working-directory: src/RProvider/
     - name: Pack main project
       run: dotnet pack
       working-directory: src/RProvider/
