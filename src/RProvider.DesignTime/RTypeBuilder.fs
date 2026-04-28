@@ -88,7 +88,6 @@ module internal RTypeBuilder =
 
                                 match deserializeRValue serializedRVal with
                                 | RValue.Function (paramList, hasVarArgs) ->
-                                    LogFile.logf "-- Function -- %s (%A)" memberName paramList
                                     let paramList =
                                         [ 
                                             for p in paramList ->
@@ -104,7 +103,6 @@ module internal RTypeBuilder =
                                                     ) ]
 
                                     let paramCount = paramList.Length
-                                    LogFile.logf "Param count = %i" paramCount
                                     let pm =
                                         ProvidedMethod(
                                             methodName = memberName,
@@ -174,7 +172,6 @@ module internal RTypeBuilder =
                                                                 filteredNamedArgs
                                                                 %%emptyVarArgs @@>
                                         )
-                                    LogFile.logf "Made provided method %A" pm
                                     
                                     let addDoc () =
                                         match titles.TryFind name with
@@ -182,10 +179,8 @@ module internal RTypeBuilder =
                                         | None -> "No documentation available"
                                     
                                     pm.AddXmlDocDelayed addDoc
-                                    LogFile.logf "Added XML"
 
                                     yield pm :> MemberInfo                                        
-                                    LogFile.logf "Yielded"
 
                                     let byName t q =
                                         ProvidedMethod(
@@ -240,7 +235,6 @@ module internal RTypeBuilder =
                                     yield plm :> MemberInfo
 
                                 | RValue.Value ->
-                                    LogFile.logf "-- Value -- %s" memberName
                                     yield
                                         ProvidedProperty(
                                             propertyName = memberName,
@@ -261,7 +255,7 @@ module internal RTypeBuilder =
     /// the error message, otherwise go ahead and use 'generateTypes'!
     let initAndGenerate providerAssembly =
         [ // Get the assembly and namespace used to house the provided types
-          LogFile.logf "initAndGenerate: starting"
+          LogFile.logf "[DesignTime] initAndGenerate: starting"
           let ns = "RProvider"
           match RInteropClient.tryGetInitializationError () with
           | "" ->
@@ -280,4 +274,4 @@ module internal RTypeBuilder =
               // add an error namespace (shown when typing `open RProvider.`)
               yield ns + ".Error: " + error, [ pty ]
 
-          LogFile.logf "initAndGenerate: finished" ]
+          LogFile.logf "[DesignTime] initAndGenerate: finished" ]

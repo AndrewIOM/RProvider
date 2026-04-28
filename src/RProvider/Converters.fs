@@ -30,12 +30,34 @@ module Convert =
         | Empty
         | NoConverter
 
+    /// Converts an extracted value into an obj, where
+    /// the obj contains an option wrapping the internal
+    /// representation.
+    let internal extractedToObj = function
+        | Int v -> v |> box |> Some
+        | Float v -> v |> box |> Some
+        | Bool v -> v |> box |> Some
+        | String v -> v |> box |> Some
+        | Complex v -> v |> box |> Some
+        | Date v -> v |> box |> Some
+        | DateTime v -> v |> box |> Some
+        | IntMatrix v -> v |> box |> Some
+        | FloatMatrix v -> v |> box |> Some
+        | BoolMatrix v -> v |> box |> Some
+        | StringMatrix v -> v |> box |> Some
+        | Empty -> None
+        | NoConverter -> None
+
     /// Extract an R value to a standard form
     /// (an array of option types) for an appropriate
     /// .NET equivalent type.
     let internal extractFromR engine sexp =
         match sexp with
         | Null engine sexp -> Empty
+        | IntegerMatrix engine v -> Extract.extractIntMatrix engine v |> IntMatrix
+        | LogicalMatrix engine v -> Extract.extractLogicalMatrix engine v |> BoolMatrix
+        | CharacterMatrix engine v -> Extract.extractStringMatrix engine v |> StringMatrix
+        | RealMatrix engine v -> Extract.extractDoubleMatrix engine v |> FloatMatrix
         | IntegerVector engine xs -> Extract.extractIntArray engine xs |> Int
         | LogicalVector engine xs -> Extract.extractLogicalArray engine xs |> Bool
         | CharacterVector engine xs -> Extract.extractStringArray engine xs |> String
@@ -49,10 +71,6 @@ module Convert =
             |> Array.map (Option.map RDateTime.toDateTimeUtc)
             |> DateTime
         | RealVector engine xs -> Extract.extractFloatArray engine xs |> Float
-        | IntegerMatrix engine v -> Extract.extractIntMatrix engine v |> IntMatrix
-        | LogicalMatrix engine v -> Extract.extractLogicalMatrix engine v |> BoolMatrix
-        | CharacterMatrix engine v -> Extract.extractStringMatrix engine v |> StringMatrix
-        | RealMatrix engine v -> Extract.extractDoubleMatrix engine v |> FloatMatrix
         | _ -> NoConverter
 
     let private isList (t:System.Type) = t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<list<_>>
@@ -61,14 +79,17 @@ module Convert =
     /// Reshape the standard 'T option [] form of an
     /// extracted R value into the desired output container type.
     let internal reshape<'outType> extractedVal : 'outType option =
-        LogFile.logf "Reshaping to %A (%A)" typeof<'outType> extractedVal
         let t = typeof<'outType>
         let retype (x: 'b) : Option<'outType> = x |> box |> unbox<'outType> |> Some
 
         let inline shapeArray (arr: 'a option[]) =
             if t.IsArray then
                 let elem = t.GetElementType()
-                if isOption elem then arr |> retype
+                if isOption elem
+                then
+                    let inner = elem.GetGenericArguments().[0]
+                    if inner = typeof<'a> then arr |> retype
+                    else None
                 else
                     if Array.exists Option.isNone arr then None
                     else arr |> Array.map Option.get |> retype
@@ -76,7 +97,9 @@ module Convert =
             elif isList t then
                 let elem = t.GetGenericArguments().[0]
                 if isOption elem then
-                    arr |> Array.toList |> retype
+                    let inner = elem.GetGenericArguments().[0]
+                    if inner = typeof<'a> then arr |> Array.toList |> retype
+                    else None
                 else
                     if Array.exists Option.isNone arr then None
                     else arr |> Array.map Option.get |> Array.toList |> retype
@@ -136,8 +159,8 @@ module Convert =
     /// for RComplex). The values are extracted into .NET memory space.
     /// If 'outType is obj, then returns an array-based representation.
     let tryFromRStructural<'outType> (engine: NativeApi.RunningEngine) (sexp: SymbolicExpression) : 'outType option =
-        if typeof<'outType> = typeof<obj> then
-            Some (box <| extractFromR engine sexp) |> unbox
+        if typeof<'outType> = typeof<obj>
+        then extractFromR engine sexp |> extractedToObj |> unbox
         else extractFromR engine sexp |> reshape<'outType>
 
     /// Convert a value from a symbolic expression into a wrapped
