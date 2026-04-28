@@ -48,9 +48,8 @@ jobs:
       run: dotnet tool restore
     - name: Restore paket dependencies
       run: dotnet paket restore
-    - name: Restore main project
+    - name: Restore solution
       run: dotnet restore
-      working-directory: src/RProvider/
     - name: Build main project
       run: dotnet build
       working-directory: src/RProvider/
