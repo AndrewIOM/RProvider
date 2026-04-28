@@ -46,6 +46,8 @@ jobs:
         dotnet-version: 10.0.x
     - name: Restore tool dependencies
       run: dotnet tool restore
+    - name: Restore paket dependencies
+      run: dotnet paket restore
     - name: Build and test
       run: dotnet fsi build.fsx
     - name: Test upload local nuget
