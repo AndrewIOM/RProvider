@@ -75,10 +75,6 @@ let means =
       let data = Sample(sprintf "data/sample_%d.rdata" i)
       data.volcanoMean.[0] ]
 (**
-Note that the default conversions available depend on the plugins that are currently
-available. For example, when you install the enrie [FsLab](http://www.fslab.org) package
-with the [Deedle](https://fslab.org/Deedle/) library, the `RData` 
-provider will automatically expose data frames as Deedle `Frame<string, string>` values.
 
 Passing data from F# to R
 -------------------------

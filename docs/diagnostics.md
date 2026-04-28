@@ -36,9 +36,9 @@ R provider will start logging.
 Enabling logging on Mac/Linux
 -----------------------------
 
-If you're using Xamarin Studio on Mac, then the easiest option is to set the
-variable from Terminal and then start Xamarin Studio from terminal. Note that
-if you set the environment variable from terminal, but launch Xamarin Studio
+If you're using VsCode on Mac, then the easiest option is to set the
+variable from Terminal and then start VsCode from terminal. Note that
+if you set the environment variable from terminal, but launch VsCode
 from Dock or in some other way, it will not see the variable!
 
 The following should do the trick (assuming the folder `/Users/tomasp/Temp` exists):

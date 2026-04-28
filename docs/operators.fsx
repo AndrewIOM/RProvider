@@ -50,9 +50,8 @@ R.mtcars?mpg
 ### S4 object: access a slot 
 *)
 
-let x = R.rnorm(100)
-x.Engine.Evaluate("setClass('testclass', representation(foo='character', bar='integer'))")
+R.eval "setClass('testclass', representation(foo='character', bar='integer'))"
 
-let test = x.Engine.Evaluate("new('testclass', foo='s4', bar=1:4)")
+let test = R.eval "new('testclass', foo='s4', bar=1:4)"
 
 test?foo

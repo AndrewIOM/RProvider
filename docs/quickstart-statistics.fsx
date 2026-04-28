@@ -107,8 +107,8 @@ For instance, let's retrieve the coefficients and residuals,
 which are both R vectors containg floats:
 *)
 
-let coefficients = result.AsList().["coefficients"].AsNumeric()
-let residuals = result.AsList().["residuals"].AsNumeric()
+let coefficients = result?coefficients.AsVector().Real()
+let residuals = result?residuals.AsVector().Real()
 
 (**
 We can also produce summary statistics about our model,
@@ -117,8 +117,8 @@ indicates a very poor fit, and close to 1 a good fit.
 See [R docs for the details on Summary](http://stat.ethz.ch/R-manual/R-patched/library/stats/html/summary.lm.html).
 *)
 
-let summary = R.summary(result)
-summary.AsList().["r.squared"].AsNumeric()
+let summary = R.summary result
+summary?``r.squared``.AsScalar()
 
 (**
 Finally, we can directly pass results, which is a R expression,
