@@ -17,18 +17,17 @@ module LogFile =
     /// Windows is "C:\Users\<user>\AppData\Roaming\RLogs\log.txt" and on Mac
     /// this is in "/User/<user>/.config/RLogs/log.txt")
     let private logFile =
-        "/Users/andrewmartin/rprovider.log"
-        // try
-        //     let var = Environment.GetEnvironmentVariable(logEnvVar)
+        try
+            let var = Environment.GetEnvironmentVariable(logEnvVar)
 
-        //     if var <> null then
-        //         var
-        //     else
-        //         let appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
-        //         if not (Directory.Exists(appData + "/RLogs")) then Directory.CreateDirectory(appData + "/RLogs") |> ignore
-        //         appData + "/RLogs/log.txt"
-        // with
-        // | _ -> (* Silently ignoring logging errors *) null
+            if var <> null then
+                var
+            else
+                let appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
+                if not (Directory.Exists(appData + "/RLogs")) then Directory.CreateDirectory(appData + "/RLogs") |> ignore
+                appData + "/RLogs/log.txt"
+        with
+        | _ -> (* Silently ignoring logging errors *) null
 
     /// Append string to a log file
     let private writeString str =
