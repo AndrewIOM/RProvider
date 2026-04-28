@@ -114,10 +114,10 @@ Target.create
     "Clean"
     (fun _ ->
         Fake.IO.Shell.cleanDirs [ "bin"
-                                  "temp" ]
+                                  "local-packages" ]
 
-        Fake.IO.Shell.cleanDirs [ "tests/Test.RProvider/bin"
-                                  "tests/Test.RProvider/obj" ])
+        Fake.IO.Shell.cleanDirs [ "tests/RProvider.Tests/bin"
+                                  "tests/RProvider.Tests/obj" ])
 
 Target.create "CleanDocs" (fun _ -> Fake.IO.Shell.cleanDirs [ ".fsdocs" ])
 

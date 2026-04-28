@@ -3,7 +3,6 @@
 #################
 
 paket-files/
-Test.RProvider.dll*
 packages/
 temp/
 docs/output/
