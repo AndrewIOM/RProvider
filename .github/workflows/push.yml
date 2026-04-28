@@ -40,7 +40,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 10.0.x
+        dotnet-version: 10.0.100
     - name: Restore tool dependencies
       run: dotnet tool restore
     - name: Restore paket dependencies

@@ -204,7 +204,6 @@ let nugetTarget name isLocalTestCopy =
                     ("PublishRepositoryUrl", "true")
                     ("EmbedUntrackedSources", "true")
                     ("IncludeSymbols", "true")
-                    ("IncludeSymbols", "false")
                     ("SymbolPackageFormat", "snupkg")
                     ("Copyright", copyright) ]
 
