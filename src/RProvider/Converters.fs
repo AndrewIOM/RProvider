@@ -185,6 +185,10 @@ module Convert =
         | S4ObjectType
         | R6ObjectType -> None
 
+    let private nullToNone str =
+        if isNull str then None
+        else Some str
+
     let toR (eng: NativeApi.RunningEngine) (value: obj) : SymbolicExpression =
         match value with
 
@@ -195,11 +199,11 @@ module Convert =
 
         // .NET primitives:
         | null -> { ptr = eng.Api.nilValue }
-        | :? string as s -> Create.stringVector eng [| Some s |]
-        | :? array<string> as xs -> Create.stringVector eng (Array.map Some xs)
-        | :? list<string> as xs -> Create.stringVector eng (List.map Some xs)
-        | :? array<string option> as xs -> Create.stringVector eng xs
-        | :? list<string option> as xs -> Create.stringVector eng xs
+        | :? string as s -> Create.stringVector eng [| nullToNone s |]
+        | :? array<string> as xs -> Create.stringVector eng (Array.map nullToNone xs)
+        | :? list<string> as xs -> Create.stringVector eng (List.map nullToNone xs)
+        | :? array<string option> as xs -> Create.stringVector eng (xs |> Array.map(Option.bind nullToNone))
+        | :? list<string option> as xs -> Create.stringVector eng (xs |> List.map(Option.bind nullToNone))
         | :? int as i -> Create.intVector eng [| Some i |]
         | :? array<int> as xs -> Create.intVector eng (Array.map Some xs)
         | :? list<int> as xs -> Create.intVector eng (List.map Some xs)

@@ -5,16 +5,15 @@ open System
 open Expecto
 open FsCheck
 
-let testVector (xs: 'scalar option []) (typeof: RBridge.SymbolicExpression.SexpType) clsName =
+let testVector (xs: 'scalar option []) (t: RBridge.SymbolicExpression.SexpType) clsName =
     let sexp = SymbolicExpression.ofObj xs
-    Expect.equal (SymbolicExpression.getExprType sexp) typeof "Type was mutated"
+    Expect.equal (SymbolicExpression.getExprType sexp) t "Type was mutated"
     Expect.equal sexp.Class clsName "R class was not properly set"
 
     // Vectors round-trip as vectors
     Expect.equal (Some xs) (sexp.TryFromR<'scalar option array>()) "Round-trip returned different value"
 
     // If a single-element vector, can return as a scalar
-
     let scalarOpt = sexp.TryFromR<'scalar option>()
     if xs.Length = 1
     then Expect.equal (Some xs.[0]) scalarOpt ""
@@ -33,18 +32,28 @@ let testScalar (x: 'scalar) (typeof: RBridge.SymbolicExpression.SexpType) clsNam
 
     // Scalars round-trip as vectors of scalar option
     Expect.equal[| Some x |] (sexp.FromR<'scalar option []>()) ""
-    // Expect.equal[| Some x |] (unbox<'scalar option []> <| sexp.FromR()) "Default obj conversion should be to option array"
+    Expect.equal[| Some x |] (unbox<'scalar option []> <| sexp.FromR()) "Default obj conversion should be to option array"
 
+
+/// R stores date-times in seconds, so we cannot
+/// expect round-tripping if fractional seconds are passed through.
+let normaliseToSeconds (dt: DateTime) =
+    let epoch = DateTime(1970,1,1,0,0,0,DateTimeKind.Utc)
+    let seconds = (dt.ToUniversalTime() - epoch).TotalSeconds |> int64
+    epoch.AddSeconds(float seconds)
+
+let nullToNone v =
+    if isNull v then None else Some v
 
 [<Tests>]
 let roundTrips =
     testList "Round-trip tests" [
 
         testProperty "Datetime vector round-trip tests" <| fun (NonEmptyArray (xs: DateTime option [])) ->
-            testVector xs RBridge.SymbolicExpression.SexpType.RealVector [| "POSIXct"; "POSIXt" |]
+            testVector (xs |> Array.map(Option.map normaliseToSeconds)) RBridge.SymbolicExpression.SexpType.RealVector [| "POSIXct"; "POSIXt" |]
 
         testProperty "Datetime scalar round-trip tests" <| fun (xs: DateTime) ->
-            let xs = DateTime.SpecifyKind(xs, DateTimeKind.Utc)
+            let xs = normaliseToSeconds xs
             testScalar xs RBridge.SymbolicExpression.SexpType.RealVector [| "POSIXct"; "POSIXt" |]
 
         testProperty "Date vector round-trip tests" <| fun (NonEmptyArray (xs: DateTime option [])) ->
@@ -84,11 +93,11 @@ let roundTrips =
                 let x = RBridge.Extensions.RComplex.Create(r, i)
                 testScalar x RBridge.SymbolicExpression.SexpType.ComplexVector [||]
 
-        // testProperty "String arrays round-trip" <| fun (NonEmptyArray strings) ->
-        //     let ascii = ASCIIEncoding()
-        //     if  Array.filter (System.String.IsNullOrEmpty >> not) strings |> Array.forall (fun (s: string) -> s = (s |> ascii.GetBytes |> ascii.GetString)) then
-        //         let sexp = SymbolicExpression.ofObj strings
-        //         Expect.equal strings (unbox<string[]> <| sexp.FromR<obj>()) ""
-        //         Expect.equal strings (sexp.FromR<string []>()) ""
+        testProperty "String arrays round-trip" <| fun (NonEmptyArray strings) ->
+            if strings |> Array.contains "" |> not then
+                let sexp = SymbolicExpression.ofObj strings
+                let strings = strings |> Array.map nullToNone
+                Expect.sequenceEqual strings (unbox<string option[]> <| sexp.FromR<obj>()) ""
+                Expect.sequenceEqual strings (sexp.FromR<string option []>()) ""
 
     ]
