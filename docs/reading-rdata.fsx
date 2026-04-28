@@ -85,10 +85,10 @@ option is to call the `R.assign` function to define named values in the R enviro
 and then use `R.save` to save the environment to a file:
 *)
 // Calculate sum of square differences
-let avg = sample.volcanoList |> Array.average
+let avg = sample.volcanoList |> Array.choose id |> Array.average
 let sqrs = 
   sample.volcanoList 
-  |> Array.map (fun v -> pown (v - avg) 2)
+  |> Array.map (fun v -> pown (v.Value - avg) 2)
 
 // Save the squares to an RData file
 R.assign("volcanoDiffs", sqrs)

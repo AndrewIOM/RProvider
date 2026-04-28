@@ -107,8 +107,8 @@ For instance, let's retrieve the coefficients and residuals,
 which are both R vectors containg floats:
 *)
 
-let coefficients = result?coefficients.AsVector().Real()
-let residuals = result?residuals.AsVector().Real()
+let coefficients = result?coefficients.AsVector().AsReal()
+let residuals = result?residuals.AsVector().AsReal()
 
 (**
 We can also produce summary statistics about our model,

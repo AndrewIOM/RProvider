@@ -73,7 +73,7 @@ Functions exposed by the RProvider return the erased type `RExpr`. This keeps al
 
 RProvider supports two ways of accessing results:
 1. Semantic wrappers.
-2. Conversion 
+2. Conversion into .NET values.
 
 ### Typed access into key R types
 
@@ -83,18 +83,9 @@ If there are no supported conversions, you can access the data through the RDotN
 *)
 
 let res = R.sum([|1;2;3;4|])
-let resInt = res.TryAsVector.Value.Real()
-
+let resInt = res.TryAsVector.Value.AsReal()
 
 (**
-To make this easier, we have defined some active patterns, under the RProvider.Helpers namespace, which is auto-opened when you open the RProvider namespace.  These combine the type tests and conversion.  An equivalent example:
-*)
-
-match R.sum([|1;2;3;4|]) with 
-| IntegerVector(iv) -> iv.[0]
-| _                 -> failwithf "Expecting a Numeric but got a %A" res.Type
-
-
 
 ### Convert the data into a specified .NET type via GetValue<type>()
 
@@ -131,7 +122,6 @@ We also expose an extension property called Value that performs a _default_ conv
 
 Again, custom conversions can be supported through [plugins](plugins.html).
 
-(**
 ## What if I commonly need an argument or result conversion that RProvider does not support?
 
 If you believe the argument conversion is universally appropriate and should be available to everybody, please fork the repo and submit a pull request.
