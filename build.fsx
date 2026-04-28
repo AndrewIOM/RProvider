@@ -143,7 +143,7 @@ Target.create
         DotNet.build
             (fun args ->
                 { args with
-                      Configuration = DotNet.BuildConfiguration.Debug })
+                      Configuration = DotNet.BuildConfiguration.Release })
             "tests/RProvider.Tests/RProvider.Tests.fsproj")
 
 // --------------------------------------------------------------------------------------
@@ -160,7 +160,7 @@ Target.create
                 (fun args ->
                     { args with
                           Verbosity = Some Fake.DotNet.DotNet.Verbosity.Normal
-                          CustomParams = Some "-c Debug" })
+                          CustomParams = Some "-c Release" })
                 "run"
                 "--project tests/RProvider.Tests/RProvider.Tests.fsproj"
 
