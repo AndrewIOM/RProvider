@@ -8,11 +8,14 @@ jobs:
   build:
 
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
     strategy:
-      fail-fast: false
       matrix:
-        os: [ macos-latest ]
+        r-version: [ '4.5.0' ]
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        arch: [ x64, arm64 ]
+        exclude:
+        - os: windows-latest
+          arch: arm64
     env:
       RPROVIDER_LOG: rlog.txt
 
@@ -21,7 +24,7 @@ jobs:
     - uses: r-lib/actions/setup-r@v2
       name: Setup R
       with:
-        r-version: 'release'
+          r-version: ${{ matrix.r-version }}
     - name: Set R_HOME environment variable
       run:   |
          if [ "$RUNNER_OS" == "Linux" ]; then
@@ -52,13 +55,3 @@ jobs:
       run: dotnet restore
     - name: Build and test
       run: dotnet fsi build.fsx
-    - name: Test upload local nuget
-      if: ${{ always() }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: native-${{ matrix.os }}-${{ matrix.arch }}
-        path: |
-          local-packages/*.nupkg
-    - name: Check R log
-      if: ${{ always() }}
-      run: cat rlog.txt
