@@ -29,6 +29,7 @@
     <ProjectReference Include="../RProvider.Abstractions/RProvider.Abstractions.fsproj">
       <PrivateAssets>all</PrivateAssets>
     </ProjectReference>
+    <PackageReference Update="FSharp.Core" Version="8.0.403" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../../docs/img/logo.png" Pack="true" PackagePath="/">
@@ -40,12 +41,12 @@
           PackageCopyToOutput="true" />
     <None Include="..\RProvider.Abstractions\bin\$(Configuration)\netstandard2.0\RProvider.Abstractions.dll"
           Pack="true"
-          PackagePath="lib/$(TargetFramework)/" />
+          PackagePath="lib/net10.0/" />
   </ItemGroup>
 
   <Target Name="IncludeServerInPackage" BeforeTargets="Build">
     <ItemGroup>
-      <_RIDs Include="win-x64;linux-x64;osx-x64;win-arm64;linux-arm64;osx-arm64" />
+      <_RIDs Include="win-x64;linux-x64;osx-x64;linux-arm64;osx-arm64" />
     </ItemGroup>
     <MSBuild
       Projects="../RProvider.Server/RProvider.Server.fsproj"

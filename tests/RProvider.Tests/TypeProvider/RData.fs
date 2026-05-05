@@ -4,7 +4,7 @@ open System
 open RProvider
 open Expecto
 
-type Sample = RData<"/Users/andrewmartin/Documents/GitHub Projects/RProvider/tests/RProvider.Tests/data/sample.rdata">
+type Sample = RData<"data/sample.rdata">
 
 let removeNAs v = v |> Array.choose id
 

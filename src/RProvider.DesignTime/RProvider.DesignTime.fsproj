@@ -24,6 +24,9 @@
     <ProjectReference Include="../RProvider.Abstractions/RProvider.Abstractions.fsproj">
       <PrivateAssets>all</PrivateAssets>
     </ProjectReference>
+    <PackageReference Update="FSharp.Core" Version="8.0.403">
+      <ExcludeAssets>runtime;contentFiles</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

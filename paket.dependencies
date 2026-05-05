@@ -3,7 +3,7 @@ source https://www.nuget.org/api/v2
 frameworks: auto-detect
 storage: none
 
-nuget FSharp.Core ~> 8
+nuget FSharp.Core 8.0.403
 nuget FSharp.TypeProviders.SDK 8.5.0
 
 nuget System.Reflection.MetadataLoadContext ~> 10.0.0
@@ -15,6 +15,6 @@ group Test
     frameworks: auto-detect
     storage: none
 
-    nuget FSharp.Core ~> 8
+    nuget FSharp.Core 8.0.403
     nuget Expecto
     nuget Expecto.FsCheck
