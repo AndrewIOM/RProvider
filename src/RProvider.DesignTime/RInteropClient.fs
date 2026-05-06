@@ -116,7 +116,7 @@ module RInteropClient =
             else if RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
                 Path.Combine(Path.GetDirectoryName(serverRoot), "server", sprintf "linux-%s" architecture, "publish", Server)
             else if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
-                Path.Combine(Path.GetDirectoryName(serverRoot), "server", sprintf "win-%s" architecture, "publish", Server + ".dll")
+                Path.Combine(Path.GetDirectoryName(serverRoot), "server", sprintf "win-%s" architecture, "publish", Server + ".exe")
             else
                 failwithf "Your OS (%s) is not currently supported by RProvider." RuntimeInformation.FrameworkDescription
 
