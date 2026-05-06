@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         r-version: [ '4.5.0' ]
-        os: [macos-latest, windows-latest]
+        os: [macos-latest, windows-latest, ubuntu-latest]
         arch: [ x64, arm64 ]
         exclude:
         - os: windows-latest
@@ -57,3 +57,7 @@ jobs:
       run: dotnet restore
     - name: Build and test
       run: dotnet fsi build.fsx
+      timeout-minutes: 5
+    - name: Check R log
+      if: ${{ always() }}
+      run: cat rlog.txt
