@@ -185,9 +185,9 @@ module Convert =
         | S4ObjectType
         | R6ObjectType -> None
 
-    let private nullToNone str =
+    let private nullToNone (str:string) =
         if isNull str then None
-        else Some str
+        else Some (str.Replace("\u0000", ""))
 
     let toR (eng: NativeApi.RunningEngine) (value: obj) : SymbolicExpression =
         match value with

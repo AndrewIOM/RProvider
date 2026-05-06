@@ -42,8 +42,8 @@ let normaliseToSeconds (dt: DateTime) =
     let seconds = (dt.ToUniversalTime() - epoch).TotalSeconds |> int64
     epoch.AddSeconds(float seconds)
 
-let nullToNone v =
-    if isNull v then None else Some v
+let nullToNone (v:string) =
+    if isNull v then None else Some (v.Replace("\u0000", ""))
 
 [<Tests>]
 let roundTrips =
@@ -94,10 +94,9 @@ let roundTrips =
                 testScalar x RBridge.SymbolicExpression.SexpType.ComplexVector [||]
 
         testProperty "String arrays round-trip" <| fun (NonEmptyArray strings) ->
-            if strings |> Array.contains "" |> not then
-                let sexp = SymbolicExpression.ofObj strings
-                let strings = strings |> Array.map nullToNone
-                Expect.sequenceEqual strings (unbox<string option[]> <| sexp.FromR<obj>()) ""
-                Expect.sequenceEqual strings (sexp.FromR<string option []>()) ""
+            let sexp = SymbolicExpression.ofObj strings
+            let strings = strings |> Array.map nullToNone
+            Expect.equal strings (unbox<string option[]> <| sexp.FromR<obj>()) ""
+            Expect.equal strings (sexp.FromR<string option []>()) ""
 
     ]
