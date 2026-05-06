@@ -4,7 +4,7 @@ open System
 open RProvider
 open Expecto
 
-type Sample = RData<"data/sample.rdata">
+type Sample = RData<"../data/sample.rdata", ResolutionFolder = __SOURCE_DIRECTORY__>
 
 let removeNAs v = v |> Array.choose id
 

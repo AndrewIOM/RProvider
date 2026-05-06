@@ -24,14 +24,28 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
         | [ v ] -> v
         | _ -> failwith "Expected one argument."
 
+    let resolve resolutionFolder path =
+        if Path.IsPathRooted path then path
+        elif not (System.String.IsNullOrWhiteSpace resolutionFolder) then
+            Path.Combine(resolutionFolder, path)
+        else
+            Path.Combine(cfg.ResolutionFolder, path)
+
     /// Given a file name, generate static type inherited from REnv
     let generateTypes asm typeName (args: obj []) =
         LogFile.logf "Generating type for %s" typeName
         // Load the environment and generate the type
         let fileName = args.[0] :?> string
+        let resolutionDir = args.[1] :?> string
 
-        let longFileName =
-            if Path.IsPathRooted(fileName) then fileName else Path.Combine(cfg.ResolutionFolder, fileName)
+        let longFileName = resolve resolutionDir fileName
+        if not <| File.Exists longFileName then
+            let msg =
+                sprintf "RProvider: The RData file '%s' does not exist. \
+                        Resolved path: '%s'. \
+                        Set ResolutionFolder = __SOURCE_DIRECTORY__ if using a relative path."
+                    fileName longFileName
+            raise (FileNotFoundException msg)
 
         let resTy = ProvidedTypeDefinition(asm, "RProvider", typeName, Some typeof<RData>)
 
@@ -86,19 +100,24 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
 
     // Register the main (parameterized) type with F# compiler
     // Provide tye 'RProvider.RData<FileName>' type
-    let asm =
-        //    let coreAssembly = typeof<obj>.Assembly
-//    let resolver = PathAssemblyResolver([ cfg.RuntimeAssembly; coreAssembly.Location ])
-//    use mlc = new MetadataLoadContext(resolver, coreAssemblyName = coreAssembly.GetName().Name)
-//    mlc.LoadFromAssemblyPath cfg.RuntimeAssembly
-        Assembly.LoadFrom cfg.RuntimeAssembly
+    let asm = Assembly.LoadFrom cfg.RuntimeAssembly
 
     let rdata = ProvidedTypeDefinition(asm, "RProvider", "RData", Some(typeof<obj>))
-    let parameter = ProvidedStaticParameter("FileName", typeof<string>)
+    let parameters = [
+        ProvidedStaticParameter("FileName", typeof<string>)
+        ProvidedStaticParameter("ResolutionFolder", typeof<string>, "")
+    ]
+
+    let helpText =
+        """<summary>Typed representation of an .rdata file.</summary>
+           <param name='FileName'>Location of an .rdata file from which to infer structure.</param>
+           <param name='ResolutionFolder'>If using a relative path, the folder from which to resolve the relative path.</param>"""
+
+    do rdata.AddXmlDoc helpText
 
     do
-        rdata.DefineStaticParameters([ parameter ], generateTypes asm)
-        LogFile.logf "Defined static Parameters %O" parameter
+        rdata.DefineStaticParameters(parameters, generateTypes asm)
+        LogFile.logf "Defined static Parameters %O" parameters
 
     do
         this.AddNamespace("RProvider", [ rdata ])
