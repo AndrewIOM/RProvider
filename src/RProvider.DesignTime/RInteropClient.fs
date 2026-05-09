@@ -13,6 +13,9 @@ open RProvider.Common.InteropServer
 
 module RInteropClient =
 
+    /// A locking object for calling over the pipe.
+    let syncRoot = obj()
+
     type RawPipeClient(pipeName: string) =
 
         // Connect synchronously (safe for type providers)
@@ -32,35 +35,37 @@ module RInteropClient =
         let writer = new BinaryWriter(stream, Encoding.UTF8)
 
         member _.Call<'T>(req: ServerRequest) : 'T =
+            lock syncRoot (fun () ->
 
-            let reqBytes =
-                use ms = new MemoryStream()
-                use bw = new BinaryWriter(ms, Encoding.UTF8)
-                Request.write bw req
-                bw.Flush ()
-                ms.ToArray ()
+                let reqBytes =
+                    use ms = new MemoryStream()
+                    use bw = new BinaryWriter(ms, Encoding.UTF8)
+                    Request.write bw req
+                    bw.Flush ()
+                    ms.ToArray ()
 
-            writer.Write reqBytes.Length
-            writer.Write reqBytes
-            writer.Flush ()
+                writer.Write reqBytes.Length
+                writer.Write reqBytes
+                writer.Flush ()
 
-            // Read response
-            let len = reader.ReadInt32()
-            let respBytes = reader.ReadBytes(len)
-            let resp =
-                use ms = new MemoryStream(respBytes)
-                use br = new BinaryReader(ms, Encoding.UTF8)
-                Response.read br
+                // Read response
+                let len = reader.ReadInt32()
+                let respBytes = reader.ReadBytes(len)
+                let resp =
+                    use ms = new MemoryStream(respBytes)
+                    use br = new BinaryReader(ms, Encoding.UTF8)
+                    Response.read br
 
-            match resp with
-            | InitializationErrorMessageResult s -> s :> obj :?> 'T
-            | Packages pkgs -> pkgs :> obj :?> 'T
-            | UnitResult -> Unchecked.defaultof<'T>
-            | Bindings b -> b :> obj :?> 'T
-            | FunctionDescriptions f -> f :> obj :?> 'T
-            | PackageDescription d -> d :> obj :?> 'T
-            | RDataSymbols syms -> syms :> obj :?> 'T
-            | ServerError msg -> failwith msg
+                match resp with
+                | InitializationErrorMessageResult s -> s :> obj :?> 'T
+                | Packages pkgs -> pkgs :> obj :?> 'T
+                | UnitResult -> Unchecked.defaultof<'T>
+                | Bindings b -> b :> obj :?> 'T
+                | FunctionDescriptions f -> f :> obj :?> 'T
+                | PackageDescription d -> d :> obj :?> 'T
+                | RDataSymbols syms -> syms :> obj :?> 'T
+                | ServerError msg -> failwith msg
+            )
 
     [<Literal>]
     let Server = "RProvider.Server"
@@ -86,7 +91,6 @@ module RInteropClient =
 
     // Global variables for remembering the current server
     let mutable lastServer: RawPipeClient option = None
-    let serverLock = obj ()
 
     /// Returns the real assembly location - when shadow copying is enabled, this
     /// returns the original assembly location (which may contain other files we need)

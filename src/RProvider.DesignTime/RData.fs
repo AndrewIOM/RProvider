@@ -47,9 +47,11 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
                     fileName longFileName
             raise (FileNotFoundException msg)
 
+        let longFileNameAbs = Path.GetFullPath longFileName
+
         let resTy = ProvidedTypeDefinition(asm, "RProvider", typeName, Some typeof<RData>)
 
-        let ctor = ProvidedConstructor(parameters = [], invokeCode = fun _ -> <@@ IRInteropRuntime.loadRDataFile longFileName @@> )
+        let ctor = ProvidedConstructor(parameters = [], invokeCode = fun _ -> <@@ IRInteropRuntime.loadRDataFile longFileNameAbs @@> )
         resTy.AddMember(ctor)
 
         let ctor =
@@ -61,7 +63,7 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
         resTy.AddMember(ctor)
 
         // For each key in the environment, provide a property..
-        let response : (string * option<System.Type>)[] = RInteropClient.server.Value.Call (ServerRequest.GetRDataSymbols longFileName)
+        let response : (string * option<System.Type>)[] = RInteropClient.server.Value.Call (ServerRequest.GetRDataSymbols longFileNameAbs)
         LogFile.logf "Got response from server: %A" response
         for name, typ in response do
             LogFile.logf "Adding member %s" name
@@ -95,7 +97,7 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
                 )
                 |> resTy.AddMember
 
-        LogFile.logf "Finished generating types for %s" longFileName
+        LogFile.logf "Finished generating types for %s" longFileNameAbs
         resTy
 
     // Register the main (parameterized) type with F# compiler
