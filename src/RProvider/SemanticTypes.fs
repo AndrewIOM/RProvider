@@ -34,8 +34,8 @@ module RTypes =
         | S4ObjectType
         | R6ObjectType
 
-    let private scalarOrVector engine sexp =
-        match SymbolicExpression.length engine sexp with
+    let private scalarOrVector (engine:RInterop.RInstance) sexp =
+        match engine.invokeInt(fun e -> SymbolicExpression.length e sexp) with
         | 1 -> ScalarType
         | _ -> VectorType
 
@@ -118,13 +118,13 @@ module RTypes =
             let tryFromExpression (sexp: SymbolicExpression) =
                 match classify Singletons.engine.Value sexp with
                 | ScalarType ->
-                    if SymbolicExpression.length Singletons.engine.Value sexp = 1 then Some { Sexp = sexp } else None
+                    if Singletons.engine.Value.invokeInt(fun e -> SymbolicExpression.length e sexp) = 1 then Some { Sexp = sexp } else None
                 | _ -> None
 
             /// Enforces that a scalar is a vector of a single element,
             /// to be used before any operation.
             let internal enforceShape (num: RRealScalar<'u>) =
-                if SymbolicExpression.length Singletons.engine.Value num.Sexp = 1 then
+                if Singletons.engine.Value.invokeInt(fun e -> SymbolicExpression.length e num.Sexp) = 1 then
                     num
                 else
                     failwith "A scalar R value was mutated and is no longer scalar."
@@ -245,11 +245,11 @@ module RTypes =
                 |> RExprWrapper.toRProvider
 
             member this.Item(name: string) =
-                SymbolicExpression.getListItemByName Singletons.engine.Value (Some name) this.sexp
+                SymbolicExpression.getListItemByName Singletons.engine.Value name this.sexp
                 |> RExprWrapper.toRProvider
 
             member this.Length =
-                SymbolicExpression.length Singletons.engine.Value this.sexp
+                Singletons.engine.Value.invokeInt(fun e ->  SymbolicExpression.length e  this.sexp)
 
 
     module Factor =

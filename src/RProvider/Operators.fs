@@ -22,7 +22,7 @@ module Operators =
             |> RExprWrapper.toRProvider
         with
         | :? System.ArgumentOutOfRangeException ->
-            RExprWrapper.toRProvider { ptr = Singletons.engine.Value.Api.nilValue }
+            RExprWrapper.toRProvider { ptr = Singletons.engine.Value.invoke(fun e -> e.Api.nilValue) }
 
     /// When calling an R function, use the => operator in a list
     /// to set a parameter: [ "someparam" => 2 ]

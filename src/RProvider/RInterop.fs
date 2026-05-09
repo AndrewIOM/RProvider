@@ -120,17 +120,6 @@ module RInterop =
             // LogFile.logf "Ignoring name of unknown SEXP: %A" (SymbolicExpression.print Singletons.engine.Value sexp)
             RValue.Value
 
-    /// TODO. Ionide (VSCode mac) only works if this function is here
-    /// rather than in RBridge.Extensions.REnvirnonment. I have no idea
-    /// why this would be the case. Similarly, certain types of logging
-    /// in RBridge broke ionide fsac and were removed.
-    let tryGetValue (engine: NativeApi.RunningEngine) (env: REnvironment) (name: string) =
-        let sym = NativeApi.install name engine.Api
-
-        let valuePtr = NativeApi.getVarEx sym env.Pointer false engine.Api.unboundVal engine.Api
-
-        if valuePtr = engine.Api.unboundVal then None else Some { ptr = valuePtr }
-
     /// Get bindings representing the named and varargs of
     /// each function in a package.
     let getBindings (packageName: string) =
@@ -146,7 +135,7 @@ module RInterop =
         names
         |> Array.choose
             (fun name ->
-                match tryGetValue Singletons.engine.Value pkgEnv name with
+                match Environment.tryGetValue Singletons.engine.Value pkgEnv name with
                 | None -> None
                 | Some sexp ->
                     let forced = Promise.force Singletons.engine.Value sexp

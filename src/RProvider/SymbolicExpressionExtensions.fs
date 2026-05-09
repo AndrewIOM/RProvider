@@ -101,7 +101,7 @@ module SymbolicExpression =
         | Some r -> r
         | None -> failwith "Could not convert R expression to a semantic type."
 
-    let listItem name sexp = SymbolicExpression.getListItemByName Singletons.engine.Value (Some name) sexp
+    let listItem name sexp = SymbolicExpression.getListItemByName Singletons.engine.Value name sexp
 
     let getMember name sexp =
         match sexp with

@@ -158,7 +158,7 @@ module Convert =
     /// simple .NET representations provided by RBridge (for example,
     /// for RComplex). The values are extracted into .NET memory space.
     /// If 'outType is obj, then returns an array-based representation.
-    let tryFromRStructural<'outType> (engine: NativeApi.RunningEngine) (sexp: SymbolicExpression) : 'outType option =
+    let tryFromRStructural<'outType> (engine: RInterop.RInstance) (sexp: SymbolicExpression) : 'outType option =
         if typeof<'outType> = typeof<obj>
         then extractFromR engine sexp |> extractedToObj |> unbox
         else extractFromR engine sexp |> reshape<'outType>
@@ -189,7 +189,7 @@ module Convert =
         if isNull str then None
         else Some str
 
-    let toR (eng: NativeApi.RunningEngine) (value: obj) : SymbolicExpression =
+    let toR (eng: RInterop.RInstance) (value: obj) : SymbolicExpression =
         match value with
 
         // Pass-through of basic R expression values:
@@ -198,7 +198,7 @@ module Convert =
         | :? RBridge.Extensions.REnvironment as s -> s.AsSymbolicExpression
 
         // .NET primitives:
-        | null -> { ptr = eng.Api.nilValue }
+        | null -> { ptr = eng.invoke(fun e -> e.Api.nilValue) }
         | :? string as s -> Create.stringVector eng [| nullToNone s |]
         | :? array<string> as xs -> Create.stringVector eng (Array.map nullToNone xs)
         | :? list<string> as xs -> Create.stringVector eng (List.map nullToNone xs)

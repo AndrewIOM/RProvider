@@ -51,7 +51,7 @@ type IRInteropRuntime =
         : RExpr =
         LogFile.logf "call"
         let pkgEnv = RBridge.Extensions.Environment.ofPackage Singletons.engine.Value package
-        match RInterop.tryGetValue Singletons.engine.Value pkgEnv name with
+        match RBridge.Extensions.Environment.tryGetValue Singletons.engine.Value pkgEnv name with
         | Some sexp -> sexp |> RExprWrapper.toRProvider
         | None ->
             LogFile.logf "Error getting value '%s' from package '%s'." name package
@@ -71,12 +71,12 @@ type IRInteropRuntime =
     static member getRDataSymbol (env: RData) (name: string) : RExpr =
         LogFile.logf "getRDataSymbol"
         let rEnv = env |> RData.unwrap |> RExprWrapper.toRBridge |> RBridge.Extensions.Environment.ofSExp Singletons.engine.Value |> Option.get
-        let sexp = RInterop.tryGetValue Singletons.engine.Value rEnv name |> Option.get
+        let sexp = RBridge.Extensions.Environment.tryGetValue Singletons.engine.Value rEnv name |> Option.get
         sexp |> RExprWrapper.toRProvider
 
     static member getRDataSymbolTyped<'T> (env: RData) (name: string) : 'T =
         LogFile.logf "getRDataSymbolTyped"
         let rEnv = env |> RData.unwrap |> RExprWrapper.toRBridge |> RBridge.Extensions.Environment.ofSExp Singletons.engine.Value |> Option.get
-        let sexp = RInterop.tryGetValue Singletons.engine.Value rEnv name |> Option.get
+        let sexp = RBridge.Extensions.Environment.tryGetValue Singletons.engine.Value rEnv name |> Option.get
         Convert.tryFromRStructural Singletons.engine.Value sexp
         |> Option.defaultWith(fun _ -> failwithf "Could not get typed version of symbol [%s]." typeof<'T>.Name)
