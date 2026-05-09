@@ -1,10 +1,5 @@
-#I "../src/RProvider/bin/Release/net5.0/"
-#r "RDotNet.dll"
-#r "RProvider.DesignTime.dll"
-#r "RProvider.Runtime.dll"
-#r "RProvider.dll"
+#r "nuget: RProvider, 0.0.1-local"
 
-open RDotNet
 open RProvider
 open RProvider.graphics
 open RProvider.stats
@@ -44,7 +39,7 @@ let msft = getStockPrices "MSFT" 255 |> R.log |> R.diff
 let a = R.acf(msft)
 
 //lets see if the msft returns are stationary/non-unit root
-let adf = R.adf_test(msft) 
+let adf = R .adf_test(msft) 
 
 //lets look at some pair plots
 let tickers = [ "MSFT"; "AAPL"; "X"; "VXX"; "SPX"; "GLD" ]

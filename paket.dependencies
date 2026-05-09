@@ -15,6 +15,5 @@ group Test
     frameworks: auto-detect
     storage: none
 
-    nuget FSharp.Core 8.0.403
     nuget Expecto
     nuget Expecto.FsCheck

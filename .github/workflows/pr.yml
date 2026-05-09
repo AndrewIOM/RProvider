@@ -57,3 +57,7 @@ jobs:
       run: dotnet restore
     - name: Build and test
       run: dotnet fsi build.fsx
+      timeout-minutes: 10
+    - name: Check R log
+      if: ${{ always() }}
+      run: cat rlog.txt
