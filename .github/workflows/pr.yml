@@ -11,15 +11,13 @@ jobs:
     strategy:
       matrix:
         r-version: [ '4.5.0' ]
-        os: [macos-latest, windows-latest]
+        os: [macos-latest, windows-latest, ubuntu-latest]
         arch: [ x64, arm64 ]
         exclude:
         - os: windows-latest
           arch: arm64
-        - os: macos-latest
-          arch: x64
     env:
-      RPROVIDER_LOG: rlog.txt
+      RPROVIDER_LOG: true
 
     steps:
     - uses: actions/checkout@master
@@ -60,4 +58,19 @@ jobs:
       timeout-minutes: 10
     - name: Check R log
       if: ${{ always() }}
-      run: cat rlog.txt
+      run:   |
+        if [ "$RUNNER_OS" = "Linux" ]; then
+            LOGFILE="${XDG_STATE_HOME:-$HOME/.local/state}/RProvider/rprovider.log"
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+            LOGFILE="$HOME/Library/Logs/RProvider/rprovider.log"
+        else
+            LOGFILE="/c/Users/$USERNAME/AppData/Local/RProvider/rprovider.log"
+        fi
+        echo "Looking for log at: $LOGFILE"
+        if [ -f "$LOGFILE" ]; then
+            echo "=== RProvider log found ==="
+            cat "$LOGFILE"
+        else
+            echo "No RProvider log file found"
+        fi
+      shell: bash
