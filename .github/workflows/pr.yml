@@ -8,30 +8,24 @@ jobs:
   build:
 
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
     strategy:
-      fail-fast: false
       matrix:
-        os: [ macos-latest, ubuntu-latest, windows-latest ]
+        r-version: [ '4.5.0' ]
+        os: [macos-latest, windows-latest]
+        arch: [ x64, arm64 ]
+        exclude:
+        - os: windows-latest
+          arch: arm64
     env:
-      RPROVIDER_LOG: rlog.txt
+      RPROVIDER_LOG: true
 
     steps:
     - uses: actions/checkout@master
-    - name: Setup R - Ubuntu
-      if: matrix.os == 'ubuntu-latest'
-      run:   |
-          sudo apt update -qq
-          sudo apt install --no-install-recommends software-properties-common dirmngr
-          wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | sudo tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
-          sudo add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
-          sudo apt install --no-install-recommends r-base
-    - uses: r-lib/actions/setup-r@v1
-      name: Setup R - Windows / macOS
-      if: matrix.os != 'ubuntu-latest'
+    - uses: r-lib/actions/setup-r@v2
+      name: Setup R
       with:
-          r-version: '4.0.2'
-    - name: Set R environment variables
+          r-version: ${{ matrix.r-version }}
+    - name: Set R_HOME environment variable
       run:   |
          if [ "$RUNNER_OS" == "Linux" ]; then
               mkdir -p ~/.local/lib/R
@@ -46,34 +40,37 @@ jobs:
               exit 1
          fi
       shell: bash
-    - name: Verify R Home
-      run: |
-        Rscript -e 'R.home()'
-        echo "${{ env.R_HOME }}"
     - name: Install R package dependencies
-      run: Rscript -e "install.packages(c('tseries', 'zoo'), repos = 'http://cran.us.r-project.org')"
+      run: Rscript -e "install.packages(c('tseries', 'zoo'), repos = 'https://cran.r-project.org')"
       shell: bash
-    - name: Setup .NET  5
+    - name: Setup .NET
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: '5.0.x'
-    - name: Setup .NET 6
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: '6.0.x'
-        include-prerelease: true
-    - name: Test F# scripts
-      run: dotnet fsi citest.fsx
+        dotnet-version: 10.0.100
     - name: Restore tool dependencies
       run: dotnet tool restore
     - name: Restore paket dependencies
       run: dotnet paket restore
-    - name: Restore dependencies
-      run: dotnet restore RProvider.sln
-    - name: Restore dependencies (tests)
-      run: dotnet restore RProvider.Tests.sln
-    - name: Build
-      run: dotnet fake build -t All
+    - name: Restore solution
+      run: dotnet restore
+    - name: Build and test
+      run: dotnet fsi build.fsx
+      timeout-minutes: 10
     - name: Check R log
       if: ${{ always() }}
-      run: cat rlog.txt
+      run:   |
+        if [ "$RUNNER_OS" = "Linux" ]; then
+            LOGFILE="${XDG_STATE_HOME:-$HOME/.local/state}/RProvider/rprovider.log"
+        elif [ "$RUNNER_OS" = "macOS" ]; then
+            LOGFILE="$HOME/Library/Logs/RProvider/rprovider.log"
+        else
+            LOGFILE="/c/Users/$USERNAME/AppData/Local/RProvider/rprovider.log"
+        fi
+        echo "Looking for log at: $LOGFILE"
+        if [ -f "$LOGFILE" ]; then
+            echo "=== RProvider log found ==="
+            cat "$LOGFILE"
+        else
+            echo "No RProvider log file found"
+        fi
+      shell: bash

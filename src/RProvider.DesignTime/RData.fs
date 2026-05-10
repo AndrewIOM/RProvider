@@ -1,13 +1,15 @@
-﻿namespace RProvider
+﻿namespace RProvider.DesignTime
 
 open System.IO
 open System.Reflection
 open ProviderImplementation.ProvidedTypes
 open Microsoft.FSharp.Core.CompilerServices
+
 open RProvider
-open RProvider.Internal
-open Microsoft.FSharp.Quotations
-open PipeMethodCalls
+open RProvider.Common
+open RProvider.Runtime
+open RProvider.Abstractions
+open RProvider.Common.InteropServer
 
 [<TypeProvider>]
 type public RDataProvider(cfg: TypeProviderConfig) as this =
@@ -22,85 +24,103 @@ type public RDataProvider(cfg: TypeProviderConfig) as this =
         | [ v ] -> v
         | _ -> failwith "Expected one argument."
 
+    let resolve resolutionFolder path =
+        if Path.IsPathRooted path then path
+        elif not (System.String.IsNullOrWhiteSpace resolutionFolder) then
+            Path.Combine(resolutionFolder, path)
+        else
+            Path.Combine(cfg.ResolutionFolder, path)
+
     /// Given a file name, generate static type inherited from REnv
     let generateTypes asm typeName (args: obj []) =
-        Logging.logf "Generating type for %s" typeName
+        LogFile.logf "Generating type for %s" typeName
         // Load the environment and generate the type
         let fileName = args.[0] :?> string
+        let resolutionDir = args.[1] :?> string
 
-        let longFileName =
-            if Path.IsPathRooted(fileName) then fileName else Path.Combine(cfg.ResolutionFolder, fileName)
+        let longFileName = resolve resolutionDir fileName
+        if not <| File.Exists longFileName then
+            let msg =
+                sprintf "RProvider: The RData file '%s' does not exist. \
+                        Resolved path: '%s'. \
+                        Set ResolutionFolder = __SOURCE_DIRECTORY__ if using a relative path."
+                    fileName longFileName
+            raise (FileNotFoundException msg)
 
-        let resTy = ProvidedTypeDefinition(asm, "RProvider", typeName, Some typeof<REnv>)
-        let isHosted = cfg.IsHostedExecution
-        let defaultResolutionFolder = cfg.ResolutionFolder
+        let longFileNameAbs = Path.GetFullPath longFileName
 
-        // Provide default ctor and ctor taking another file as an argument
-        let createREnvExpr (fileName: Expr<string>) =
-            <@@ let longFileName =
-                    if Path.IsPathRooted(%fileName) then %fileName
-                    elif isHosted then Path.Combine(defaultResolutionFolder, %fileName)
-                    else Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, %fileName)
+        let resTy = ProvidedTypeDefinition(asm, "RProvider", typeName, Some typeof<RData>)
 
-                REnv(longFileName) @@>
-
-        let ctor = ProvidedConstructor(parameters = [], invokeCode = fun _ -> createREnvExpr <@ fileName @>)
+        let ctor = ProvidedConstructor(parameters = [], invokeCode = fun _ -> <@@ IRInteropRuntime.loadRDataFile longFileNameAbs @@> )
         resTy.AddMember(ctor)
 
         let ctor =
             ProvidedConstructor(
                 parameters = [ ProvidedParameter("fileName", typeof<string>) ],
-                invokeCode = fun (Singleton fn) -> createREnvExpr (Expr.Cast fn)
+                invokeCode = fun (Singleton fn) -> <@@ IRInteropRuntime.loadRDataFile (%%fn : string) @@>
             )
 
         resTy.AddMember(ctor)
 
         // For each key in the environment, provide a property..
-        for name, typ in
-            RInteropClient.getServer().InvokeAsync(fun s -> s.GetRDataSymbols(longFileName))
-            |> Async.AwaitTask
-            |> Async.RunSynchronously do
-            Logging.logf "Adding member %s" name
+        let response : (string * option<System.Type>)[] = RInteropClient.server.Value.Call (ServerRequest.GetRDataSymbols longFileNameAbs)
+        LogFile.logf "Got response from server: %A" response
+        for name, typ in response do
+            LogFile.logf "Adding member %s" name
 
             match typ with
-            | null ->
+            | None ->
                 // Generate property of type 'SymbolicExpression'
                 ProvidedProperty(
                     name,
-                    typeof<RDotNet.SymbolicExpression>,
-                    getterCode = fun (Singleton self) -> <@@ ((%%self): REnv).Get(name) @@>
+                    typeof<RExpr>,
+                    getterCode = fun (Singleton self) -> <@@ IRInteropRuntime.getRDataSymbol ((%%self : RData)) name @@>
                 )
                 |> resTy.AddMember
-            | typ ->
+            | Some typ ->
                 // If there is a default convertor for the type, then generate
                 // property of the statically known type (e.g. Frame<string, string>)
                 // (otherwise, `Value` will throw)
+                let miGetTyped =
+                    typeof<IRInteropRuntime>.GetMethod "getRDataSymbolTyped"
+                    |> fun mi -> mi.MakeGenericMethod [| typ |]
+
                 ProvidedProperty(
                     name,
                     typ,
-                    getterCode = fun (Singleton self) -> Expr.Coerce(<@@ ((%%self): REnv).Get(name).Value @@>, typ)
+                    getterCode = fun (Singleton self) ->
+                        Quotations.Expr.Call(
+                            miGetTyped,
+                            [ Quotations.Expr.Coerce(self, typeof<RData>)
+                              Quotations.Expr.Value(name) ]
+                        )
                 )
                 |> resTy.AddMember
 
-        Logging.logf "Finished generating types for %s" longFileName
+        LogFile.logf "Finished generating types for %s" longFileNameAbs
         resTy
 
     // Register the main (parameterized) type with F# compiler
     // Provide tye 'RProvider.RData<FileName>' type
-    let asm =
-        //    let coreAssembly = typeof<obj>.Assembly
-//    let resolver = PathAssemblyResolver([ cfg.RuntimeAssembly; coreAssembly.Location ])
-//    use mlc = new MetadataLoadContext(resolver, coreAssemblyName = coreAssembly.GetName().Name)
-//    mlc.LoadFromAssemblyPath cfg.RuntimeAssembly
-        Assembly.LoadFrom cfg.RuntimeAssembly
+    let asm = Assembly.LoadFrom cfg.RuntimeAssembly
 
     let rdata = ProvidedTypeDefinition(asm, "RProvider", "RData", Some(typeof<obj>))
-    let parameter = ProvidedStaticParameter("FileName", typeof<string>)
+    let parameters = [
+        ProvidedStaticParameter("FileName", typeof<string>)
+        ProvidedStaticParameter("ResolutionFolder", typeof<string>, "")
+    ]
+
+    let helpText =
+        """<summary>Typed representation of an .rdata file.</summary>
+           <param name='FileName'>Location of an .rdata file from which to infer structure.</param>
+           <param name='ResolutionFolder'>If using a relative path, the folder from which to resolve the relative path.</param>"""
+
+    do rdata.AddXmlDoc helpText
 
     do
-        rdata.DefineStaticParameters([ parameter ], generateTypes asm)
-        Logging.logf "Defined static Parameters %O" parameter
+        rdata.DefineStaticParameters(parameters, generateTypes asm)
+        LogFile.logf "Defined static Parameters %O" parameters
 
     do
         this.AddNamespace("RProvider", [ rdata ])
-        Logging.logf "RData added namespace %s" rdata.FullName
+        LogFile.logf "RData added namespace %s" rdata.FullName

@@ -45,7 +45,7 @@ from its GUI, [RStudio](http://www.rstudio.com/), or command line interactive en
 
 ## Using the R Type Provider
 
-RProvider is distributed as a nuget package. After [setting up the pre-requisites (installing .NET 5+, R and setting the R_HOME environment variable](requirements.html), you can use as follows:
+RProvider is distributed as a nuget package. After [setting up the pre-requisites (installing .NET 10+, R 4.5+ and setting the R_HOME environment variable](requirements.html), you can use as follows:
 
 In an F# script:
 ```fsharp
@@ -62,9 +62,7 @@ dotnet add package RProvider
 Contributing and copyright
 --------------------------
 
-The project has been originally developed by [BlueMountain Capital](https://www.bluemountaincapital.com/) and contributors.
-
-For compilation of the source, you will need F# 5.0 or later.  For runtime you'll need .NET 5.
+The project was originally developed by [BlueMountain Capital](https://www.bluemountaincapital.com/).
 
 The project is hosted on [GitHub][gh] where you can [report issues][issues], fork the project and submit pull requests.
 

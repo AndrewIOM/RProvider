@@ -2,29 +2,26 @@
   "version": 1,
   "isRoot": true,
   "tools": {
-    "fake-cli": {
-      "version": "5.20.4",
-      "commands": [
-        "fake"
-      ]
-    },
     "paket": {
-      "version": "6.0.7",
+      "version": "10.3.1",
       "commands": [
         "paket"
-      ]
+      ],
+      "rollForward": false
     },
-    "fsharp.formatting.commandtool": {
-      "version": "11.4.4",
-      "commands": [
-        "fsdocs"
-      ]
-    },
-    "fantomas-tool": {
-      "version": "4.5.7",
+    "fantomas": {
+      "version": "7.0.5",
       "commands": [
         "fantomas"
-      ]
+      ],
+      "rollForward": false
+    },
+    "fsdocs-tool": {
+      "version": "22.0.0",
+      "commands": [
+        "fsdocs"
+      ],
+      "rollForward": false
     }
   }
 }

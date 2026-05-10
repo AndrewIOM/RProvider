@@ -1,18 +1,14 @@
 (**
 ---
-category: Documentation
-categoryindex: 1
-index: 3
+category: Core Concepts
+categoryindex: 3
+index: 2
 ---
 *)
 
 (*** condition: prepare ***)
 #nowarn "211"
-#r "../src/RProvider/bin/Release/net5.0/RDotNet.dll"
-#r "../src/RProvider/bin/Release/net5.0/RDotNet.FSharp.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.Runtime.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.DesignTime.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.dll"
+#r "nuget: RProvider, 0.0.1-local"
 (*** condition: fsx ***)
 #if FSX
 #r "nuget: RProvider,{{package-version}}"
@@ -23,13 +19,12 @@ index: 3
 #endif // IPYNB
 
 
-open RDotNet
 open RProvider
 
 (**
 # Passing Data Between F# and R
 
-## Passing Parameters
+## F# to R: passing data to functions
 
 ### Parameter Passing Conventions
 
@@ -62,7 +57,7 @@ Since all arguments to functions are of type obj, it is not necessarily obvious 
 <tr><td>dataframe</td><td>Call R.data_frame, passing column vectors in a dictionary</td><tr>
 </table>
 
-**NB**: For any input, you can also pass a SymbolicExpression instance you received as the result of calling another R function.  Doing so it a very efficient way of passing data from one function to the next, since there is no marshalling between .NET and R types in that case.
+**NB**: For any input, you can also pass an RExpr instance you received as the result of calling another R function.  Doing so it a very efficient way of passing data from one function to the next, since there is no marshalling between .NET and R types in that case.
 
 ### Creating and passing an R function
 R has some high-level functions (e.g. sapply) that require a function parameter. Although F# has first-class support of functional programming and provides better functionality and syntax for apply-like operations, which often makes it sub-optimal to call apply-like high-level functions in R, the need for parallel computing in R, which is not yet directly supported by F# parallelism to R functions, requires users to pass a function as parameter. Here is an example way to create and pass an R function:
@@ -72,13 +67,27 @@ let nums = R.sapply(R.c(1,2,3),fun1)
 (**
 The same usage also applies to parallel apply functions in parallel package.
 
-## Accessing results
+## Accessing and using results
 
-Functions exposed by the RProvider return an instance of `RDotNet.SymbolicExpression`.  This keeps all return data inside R data structures, so does not impose any data marshalling overhead.  If you want to pass the value in as an argument to another R function, you can simply do so.
+Functions exposed by the RProvider return the erased type `RExpr`. This keeps all return data inside R data structures, so does not impose any data marshalling overhead.  If you want to pass the value in as an argument to another R function, you can simply do so.
 
-In order to access the result in .NET code, you have three routes:
+RProvider supports two ways of accessing results:
+1. Semantic wrappers.
+2. Conversion into .NET values.
 
-### Convert the data into a specified .NET type via GetValue<type>()
+### Typed access into key R types
+
+The provider includes typed access into R values using a set of semantic type wrappers.
+
+If there are no supported conversions, you can access the data through the RDotNet object model.  RDotNet exposes properties, members and extension members (available only if you open the RDotNet namespace) that allow you to access the underlying data directly.  So, for example:
+*)
+
+let res = R.sum([|1;2;3;4|])
+let resInt = res.TryAsVector.Value.AsReal()
+
+(**
+
+### Convert the data into a specified .NET type via FromR<type>()
 
 RProvider adds a generic `GetValue<'T>` extension method to `SymbolicExpression`.  This supports conversions from certain R values to specific .NET types.  Here are the currently supported conversions:
 
@@ -98,7 +107,7 @@ RProvider adds a generic `GetValue<'T>` extension method to `SymbolicExpression`
 
 Custom conversions can be supported through [plugins](plugins.html).
 
-### Convert the data into the default .NET type the .Value property
+### Convert the data into the default .NET type via .FromR()
 
 We also expose an extension property called Value that performs a _default_ conversion of a SymbolicExpresion to a .NET type.  These are the current conversions:
 
@@ -111,29 +120,4 @@ We also expose an extension property called Value that performs a _default_ conv
 <tr><td>numeric</td><td>double[]</td></tr>
 </table>
 
-Again, custom conversions can be supported through [plugins](plugins.html).
-
-### Explicitly access the data in the SymbolicExpression
-
-If there are no supported conversions, you can access the data through the RDotNet object model.  RDotNet exposes properties, members and extension members (available only if you open the RDotNet namespace) that allow you to access the underlying data directly.  So, for example:
-*)
-
-let res = R.sum([|1;2;3;4|])
-if res.Type = RDotNet.Internals.SymbolicExpressionType.IntegerVector then res.AsInteger().[0]
-else failwithf "Expecting a Numeric but got a %A" res.Type
-
-(**
-To make this easier, we have defined some active patterns, under the RProvider.Helpers namespace, which is auto-opened when you open the RProvider namespace.  These combine the type tests and conversion.  An equivalent example:
-*)
-
-match R.sum([|1;2;3;4|]) with 
-| IntegerVector(iv) -> iv.[0]
-| _                 -> failwithf "Expecting a Numeric but got a %A" res.Type
-
-(**
-## What if I commonly need an argument or result conversion that RProvider does not support?
-
-If you believe the argument conversion is universally appropriate and should be available to everybody, please fork the repo and submit a pull request.
-
-RProvider also supports custom conversions to/from your own data types using [plugins](plugins.html).
 *)

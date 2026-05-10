@@ -1,21 +1,21 @@
 ---
-category: Developer
-categoryindex: 2
+category: Advanced
+categoryindex: 8
 index: 3
 ---
 
 # How does it work?
 
 ## How do we call into R?
-The RProvider loads the R.DLL (which contains the core of R) into the calling process, via [RDotNet](http://rdotnet.codeplex.com/).  This will happen in several places:
+The RProvider binds to the native R C API within the calling process (using [RBridge](https://github.com/AndrewIOM/fsharp-r-bridge/)).  This happens in several places:
 
 * In the IDE, to provide IntelliSense for packages/functions/parameters.
 * In the F# compiler, to generate code that calls the R functionality you are calling.
 * In your resulting binary, to execute the generated code.
 * In F# Interactive, to do all of the above interactively.
 
-## How does RDotNet help?
-RDotNet allows R functionality to be called from .NET, and exposes an object model for representing R values (based on the type RDotNet.SymbolExpression).  Using RDotNet, one executes R code by passing strings of R code into an Evaluate method.  From the RProvider, we introspect on available R packages and functions and expose them as members of provided types.  You can then call them just like regular .NET functions, with IntelliSense and compile-time checking.  RDotNet.SymbolicExpression provides a nice OO model of the R native SEXP type, so we simply expose results using that type.  To make it more friendly from F#, we extend it with some extension members and active patterns.
+## How does RProvider rely on RBridge?
+RBridge allows R functionality to be called from .NET, and exposes a type that represents R values (RBridge.SymbolicExpression). R code may be executed by passing the code as a string into an eval method. From the RProvider, we introspect on available R packages and functions and expose them as members of provided types.  You can then call them just like regular .NET functions, with IntelliSense and compile-time checking. RBridge handles raw R interop and basic structural elements of R types. RProvider adds a semantic layer on top of this that provides a richer representation of R expression types and operations.
 
 ## How do we expose R packages?
 RProvider determines the set of installed packages in your R installation and exposes them as namespaces under the root RProvider namespace.  This allows you to 'open' the namespaces you want to use as if they were regular .NET namespaces.

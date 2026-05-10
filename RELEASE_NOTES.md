@@ -1,3 +1,4 @@
+* 3.0.0-alpha1 - replaced R.NET with RBridge, and updated to latest type provider SDK
 * 2.1.0 - new feature: ? and => operators; and locale fix for regions with comma number seperator
 * 2.0.3 - Include built-in FSI printer module
 * 2.0.2 - Breaking change: Replace "." with "_" in package names (#245) 

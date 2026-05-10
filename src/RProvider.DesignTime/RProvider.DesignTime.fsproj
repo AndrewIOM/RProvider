@@ -1,29 +1,32 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DefineConstants>IS_DESIGNTIME</DefineConstants>
+    <!-- This allows the component to execute from 'bin' directory during build -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\paket-files\fsprojects\FSharp.TypeProviders.SDK\src\ProvidedTypes.fsi">
-      <Paket>True</Paket>
-      <Link>paket-files/ProvidedTypes.fsi</Link>
-    </Compile>
-    <Compile Include="..\..\paket-files\fsprojects\FSharp.TypeProviders.SDK\src\ProvidedTypes.fs">
-      <Paket>True</Paket>
-      <Link>paket-files/ProvidedTypes.fs</Link>
-    </Compile>
-    <Compile Include="..\Common\AssemblyInfo.fs" />
+    <Compile Include="../Common/AssemblyInfo.fs" />
+    <Compile Include="../Common/LogFile.fs" />
     <Compile Include="../Common/IRInteropServer.fs" />
+    <Compile Include="IRInteropRuntime.fs" />
+    <Compile Include="../Common/Serialisation.fs" />
     <Compile Include="RInteropClient.fs" />
     <Compile Include="RTypeBuilder.fs" />
-    <Compile Include="RProvider.fs" />
     <Compile Include="RData.fs" />
+    <Compile Include="RProvider.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../RProvider.Runtime/RProvider.Runtime.fsproj" />
+    <ProjectReference Include="../RProvider.Abstractions/RProvider.Abstractions.fsproj">
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
+    <PackageReference Update="FSharp.Core" Version="8.0.403">
+      <ExcludeAssets>runtime;contentFiles</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -1,20 +1,15 @@
 ﻿(**
 ---
-category: Documentation
-categoryindex: 1
-index: 3
+title: Quickstart: Stats
+category: Getting Started
+categoryindex: 2
+index: 2
 ---
 *)
 
 (*** condition: prepare ***)
 #nowarn "211"
-#r "../src/RProvider/bin/Release/net5.0/DynamicInterop.dll"
-#r "../src/RProvider/bin/Release/net5.0/RDotNet.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.Runtime.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.DesignTime.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.dll"
-#r "RProvider.dll"
-#r "RProvider.DesignTime.dll"
+#r "nuget: RProvider, 0.0.1-local"
 (*** condition: fsx ***)
 #if FSX
 #r "nuget: RProvider,{{package-version}}"
@@ -44,10 +39,6 @@ Assuming you installed the R Type Provider in your project from NuGet,
 you can reference the required libraries and packages this way:
 *)
 
-#I "../packages/RProvider.1.0.11"
-#load "RProvider.fsx"
-
-open RDotNet
 open RProvider
 open RProvider.Operators
 
@@ -117,8 +108,8 @@ For instance, let's retrieve the coefficients and residuals,
 which are both R vectors containg floats:
 *)
 
-let coefficients = result.AsList().["coefficients"].AsNumeric()
-let residuals = result.AsList().["residuals"].AsNumeric()
+let coefficients = result?coefficients.AsVector().AsReal()
+let residuals = result?residuals.AsVector().AsReal()
 
 (**
 We can also produce summary statistics about our model,
@@ -127,8 +118,8 @@ indicates a very poor fit, and close to 1 a good fit.
 See [R docs for the details on Summary](http://stat.ethz.ch/R-manual/R-patched/library/stats/html/summary.lm.html).
 *)
 
-let summary = R.summary(result)
-summary.AsList().["r.squared"].AsNumeric()
+let summary = R.summary result
+summary?``r.squared``.AsScalar()
 
 (**
 Finally, we can directly pass results, which is a R expression,

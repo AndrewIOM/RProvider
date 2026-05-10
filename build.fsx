@@ -2,17 +2,6 @@
 // FAKE build script
 // --------------------------------------------------------------------------------------
 
-#if FAKE
-#r "paket:
-nuget FAKE.Core.Target
-nuget FAKE.Core.ReleaseNotes
-nuget FAKE.DotNet.Cli
-nuget FAKE.DotNet.Fsi
-nuget FAKE.DotNet.AssemblyInfoFile
-nuget FAKE.Tools.Git
-nuget FAKE.DotNet.Testing.XUnit2"
-#load "./.fake/build.fsx/intellisense.fsx"
-#else
 #r "nuget: FAKE.Core.Target"
 #r "nuget: FAKE.Core.ReleaseNotes"
 #r "nuget: FAKE.DotNet.Cli"
@@ -20,12 +9,11 @@ nuget FAKE.DotNet.Testing.XUnit2"
 #r "nuget: FAKE.DotNet.AssemblyInfoFile"
 #r "nuget: FAKE.Tools.Git"
 #r "nuget: FAKE.DotNet.Testing.XUnit2"
+#r "nuget: System.Reactive"
+#r "nuget: MSBuild.StructuredLogger, 2.3.71"
 
-let execContext =
-    Fake.Core.Context.FakeExecutionContext.Create false "build.fsx" []
-
+let execContext = Fake.Core.Context.FakeExecutionContext.Create false "build.fsx" []
 Fake.Core.Context.setExecutionContext (Fake.Core.Context.RuntimeContext.Fake execContext)
-#endif
 
 open Fake.Core
 open Fake.Core.TargetOperators
@@ -69,19 +57,12 @@ let repositoryUrl = "https://github.com/fslaborg/RProvider"
 let repositoryContentUrl =
     "https://raw.githubusercontent.com/fslaborg/RProvider"
 
-let serverRuntimes =
-    [ "win-x64"
-      "osx-x64"
-      "osx-arm64"
-      "linux-x64" ]
-
 // --------------------------------------------------------------------------------------
 // The rest of the code is standard F# build script
 // --------------------------------------------------------------------------------------
 
 // Read release notes & version info from RELEASE_NOTES.md
 System.Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
-let binDir = __SOURCE_DIRECTORY__ @@ "bin"
 
 let release =
     System.IO.File.ReadLines "RELEASE_NOTES.md"
@@ -125,18 +106,6 @@ Target.create
         else
             Trace.logf "Errors while formatting: %A" result.Errors)
 
-Target.create
-    "Format"
-    (fun _ ->
-        let result =
-            sourceFiles
-            |> Seq.map (sprintf "\"%s\"")
-            |> String.concat " "
-            |> DotNet.exec id "fantomas"
-
-        if not result.OK then
-            printfn "Errors while formatting all files: %A" result.Messages)
-
 
 // --------------------------------------------------------------------------------------
 // Clean build results & restore NuGet packages
@@ -145,10 +114,10 @@ Target.create
     "Clean"
     (fun _ ->
         Fake.IO.Shell.cleanDirs [ "bin"
-                                  "temp" ]
+                                  "local-packages" ]
 
-        Fake.IO.Shell.cleanDirs [ "tests/Test.RProvider/bin"
-                                  "tests/Test.RProvider/obj" ])
+        Fake.IO.Shell.cleanDirs [ "tests/RProvider.Tests/bin"
+                                  "tests/RProvider.Tests/obj" ])
 
 Target.create "CleanDocs" (fun _ -> Fake.IO.Shell.cleanDirs [ ".fsdocs" ])
 
@@ -167,25 +136,6 @@ Target.create
             (projectName + ".sln"))
 
 Target.create
-    "MakeServerExes"
-    (fun _ ->
-        Trace.log " --- Publishing the RProvider.Server executables --- "
-
-        serverRuntimes
-        |> List.iter
-            (fun runtime ->
-                Trace.logf " --- Publishing RProvider.Server for %s --- " runtime
-
-                DotNet.publish
-                    (fun args ->
-                        { args with
-                              Runtime = Some runtime
-                              SelfContained = Some false
-                              Configuration = DotNet.BuildConfiguration.Release
-                              OutputPath = Some(sprintf "src/RProvider/bin/Release/net5.0/server/%s/" runtime) })
-                    "src/RProvider.Server"))
-
-Target.create
     "BuildTests"
     (fun _ ->
         Trace.log " --- Building tests --- "
@@ -194,7 +144,7 @@ Target.create
             (fun args ->
                 { args with
                       Configuration = DotNet.BuildConfiguration.Release })
-            "tests/Test.RProvider/Test.RProvider.fsproj")
+            "tests/RProvider.Tests/RProvider.Tests.fsproj")
 
 // --------------------------------------------------------------------------------------
 // Run the unit tests using test runner & kill test runner when complete
@@ -211,59 +161,68 @@ Target.create
                     { args with
                           Verbosity = Some Fake.DotNet.DotNet.Verbosity.Normal
                           CustomParams = Some "-c Release" })
-                "test"
-                "tests/Test.RProvider/Test.RProvider.fsproj"
+                "run"
+                "--project tests/RProvider.Tests/RProvider.Tests.fsproj"
 
         if result.ExitCode <> 0 then
             failwith "Tests failed")
 
+
 // --------------------------------------------------------------------------------------
 // Build a NuGet package
 
-Target.create
-    "NuGet"
-    (fun _ ->
-        // Format the description to fit on a single line (remove \r\n and double-spaces)
-        let projectDescription =
-            projectDescription
-                .Replace("\r", "")
-                .Replace("\n", "")
-                .Replace("  ", " ")
+let nugetTarget name isLocalTestCopy =
+    Target.create
+        name
+        (fun _ ->
+            // Format the description to fit on a single line (remove \r\n and double-spaces)
+            let projectDescription =
+                projectDescription
+                    .Replace("\r", "")
+                    .Replace("\n", "")
+                    .Replace("  ", " ")
 
-        // Format the release notes
-        let releaseNotes = release.Notes |> String.concat "\n"
+            // Format the release notes
+            let releaseNotes = release.Notes |> String.concat "\n"
 
-        let properties =
-            [ ("Version", release.NugetVersion)
-              ("Authors", authors)
-              ("PackageProjectUrl", packageProjectUrl)
-              ("PackageTags", tags)
-              ("RepositoryType", repositoryType)
-              ("RepositoryUrl", repositoryUrl)
-              ("PackageLicenseExpression", license)
-              ("PackageRequireLicenseAcceptance", "false")
-              ("PackageReleaseNotes", releaseNotes)
-              ("Summary", projectSummary)
-              ("PackageDescription", projectDescription)
-              ("PackageIcon", "logo.png")
-              ("PackageIconUrl", iconUrl)
-              ("EnableSourceLink", "true")
-              ("PublishRepositoryUrl", "true")
-              ("EmbedUntrackedSources", "true")
-              ("IncludeSymbols", "true")
-              ("IncludeSymbols", "false")
-              ("SymbolPackageFormat", "snupkg")
-              ("Copyright", copyright) ]
+            let properties =
+                [
+                    ("Version", if isLocalTestCopy then "0.0.1-local" else release.NugetVersion)
+                    ("Authors", authors)
+                    ("PackageProjectUrl", packageProjectUrl)
+                    ("PackageTags", tags)
+                    ("RepositoryType", repositoryType)
+                    ("RepositoryUrl", repositoryUrl)
+                    ("PackageLicenseExpression", license)
+                    ("PackageRequireLicenseAcceptance", "false")
+                    ("PackageReleaseNotes", releaseNotes)
+                    ("Summary", projectSummary)
+                    ("PackageDescription", projectDescription)
+                    ("PackageIcon", "logo.png")
+                    ("PackageIconUrl", iconUrl)
+                    ("EnableSourceLink", "true")
+                    ("PublishRepositoryUrl", "true")
+                    ("EmbedUntrackedSources", "true")
+                    ("IncludeSymbols", "true")
+                    ("SymbolPackageFormat", "snupkg")
+                    ("Copyright", copyright) ]
 
-        DotNet.pack
-            (fun p ->
-                { p with
-                      Configuration = DotNet.BuildConfiguration.Release
-                      OutputPath = Some "bin"
-                      MSBuildParams =
-                          { p.MSBuildParams with
-                                Properties = properties } })
-            "src/RProvider/RProvider.fsproj")
+            let outPath =
+                if isLocalTestCopy then Some "local-packages"
+                else Some "bin"
+
+            DotNet.pack
+                (fun p ->
+                    { p with
+                        Configuration = DotNet.BuildConfiguration.Release
+                        OutputPath = outPath
+                        MSBuildParams =
+                            { p.MSBuildParams with
+                                    Properties = properties } })
+                "src/RProvider/RProvider.fsproj")
+
+nugetTarget "Nuget" false
+nugetTarget "NugetLocal" true
 
 //--------------------------------------------------------------------------------------
 //Generate the documentation
@@ -310,7 +269,7 @@ Target.create "All" ignore
 
 "Clean"
 ==> "AssemblyInfo"
-==> "MakeServerExes"
+// ==> "CheckFormat"
 ==> "Build"
 
 "Build"
@@ -321,6 +280,7 @@ Target.create "All" ignore
 
 "Build" ==> "NuGet" ==> "All"
 "Build" ==> "All"
-"Build" ==> "BuildTests" ==> "RunTests" ==> "All"
+"Build" ==> "NugetLocal" ==> "BuildTests" ==> "RunTests" ==> "All"
+"Build" ==> "RunTests" ==> "All"
 
 Target.runOrDefault "All"

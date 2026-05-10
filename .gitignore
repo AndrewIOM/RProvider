@@ -3,7 +3,6 @@
 #################
 
 paket-files/
-Test.RProvider.dll*
 packages/
 temp/
 docs/output/
@@ -11,6 +10,7 @@ docs/output/
 *.userprefs
 .paket/paket.exe
 .fake
+local-packages
 
 #################
 ## Eclipse

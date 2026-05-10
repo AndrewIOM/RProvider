@@ -1,19 +1,15 @@
 (** 
 ---
-category: Documentation
-categoryindex: 1
-index: 4
+title: R Expressions
+category: Core Concepts
+categoryindex: 3
+index: 1
 ---
 *)
 
 (*** condition: prepare ***)
 #nowarn "211"
-#r "../src/RProvider/bin/Release/net5.0/DynamicInterop.dll"
-#r "../src/RProvider/bin/Release/net5.0/RDotNet.dll"
-#r "../src/RProvider/bin/Release/net5.0/RDotNet.FSharp.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.Runtime.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.DesignTime.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.dll"
+#r "nuget: RProvider, 0.0.1-local"
 (*** condition: fsx ***)
 #if FSX
 #r "nuget: RProvider,{{package-version}}"
@@ -27,7 +23,7 @@ index: 4
 Working with R expressions
 ===============
 
-RProvider represents R objects and values through a `SymbolicExpression` type (derived from R.NET). RProvider includes a `SymbolicExpression` module that allows you to work with R expressions in a more idiomatic way using forward pipes (`|>`). First, open RProvider, its custom operators and any packages you need:
+RProvider represents R objects and values through an `RExpr` type. RProvider includes an `RExpr` module that allows you to work with R expressions in a more idiomatic way using forward pipes (`|>`). First, open RProvider, its custom operators and any packages you need:
 *)
 
 open RProvider
@@ -44,22 +40,21 @@ open RProvider.stats
 For this example, let's set up an S4 class and object from scratch:
 *)
 
-let x = R.rnorm(100)
-x.Engine.Evaluate("setClass('testclass', representation(foo='character', bar='integer'))")
-let s4 = x.Engine.Evaluate("new('testclass', foo='s4', bar=1:4)")
+R.eval "setClass('testclass', representation(foo='character', bar='integer'))"
+let s4 = R.eval "new('testclass', foo='s4', bar=1:4)"
 
 (**
 You can find out if there are slots using the `slots` and `trySlots` functions:
 *)
 
-s4 |> SymbolicExpression.slots
-s4 |> SymbolicExpression.trySlots
-R.mtcars |> SymbolicExpression.trySlots
+s4 |> RExpr.slots
+s4 |> RExpr.trySlots
+R.mtcars |> RExpr.trySlots
 
 (**
 You can access slot values similarly with the `slot` and `trySlot` functions:
 *)
 
-s4 |> SymbolicExpression.slot "foo"
-s4 |> SymbolicExpression.trySlot "foo"
-s4 |> SymbolicExpression.trySlot "doesntexist"
+s4 |> RExpr.slot "foo"
+s4 |> RExpr.trySlot "foo"
+s4 |> RExpr.trySlot "doesntexist"

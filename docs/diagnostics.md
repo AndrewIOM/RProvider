@@ -1,60 +1,68 @@
 ---
-category: Developer
-categoryindex: 2
-index: 3
+category: Advanced
+categoryindex: 8
+index: 2
 ---
 
 Diagnostics and debugging
 =========================
 
-The R type provider has an extensive logging to help developers diagnose
-potential issues. If you encounter any issues with the R type provider, this
-page gives you all the information you need to create a log file with detailed
-trace of what is going one. This may give you some hints on what is wrong & a
-detailed report that you can send when [submitting an
-issue](https://github.com/fslaborg/RProvider/issues).
+The R type provider uses a common logging system across all of its components.
+The design-time, runtime, and server instances all log to a common log file.
 
-**TL;DR** The logging is enabled by setting an environment variable
-`RPROVIDER_LOG` to a file name where the log should be saved. The file does
-not have to exist, but the folder where it is located has to. **You should use
-an absolute (full) path, as otherwise the server will create a seperate log in the
-nuget package directory.**
+The logfile is disabled by default. It is enabled by setting the environment
+variable `RPROVIDER_LOG` to `true` (/ `on` / `1`).
 
-Enabling logging on Windows
+If RProvider is not working correctly, the log file may give you some hints on what is wrong and provide details
+that you can send when [submitting an issue](https://github.com/fslaborg/RProvider/issues).
+
+Log location
 ---------------------------
 
-On Windows, you can set environment variables by going to system properties
-(this varies depending on the OS version, but generally right click on
-"My Computer" and select a link or button saying something like "Change settings").
+The rprovider.log file will be created and appended
+to depending on the OS it is run on. On macOS, the log will also display in the Console app that is an included macOS utility.
 
-This should open a new dialog, where you can go to "Advanced", and click on the
-"Environment Variables" button. Here, you can add the variable as either per-user
-or per-system and save it. For example, create a folder `C:\Temp` and set
-`RPROVIDER_LOG` to `C:\Temp\rlog.txt`. After you restart Visual Studio, the
-R provider will start logging.
+* macOS: ~/Library/Logs/\RProvider/rprovider.log
+* Windows: %LOCALAPPDATA%\RProvider\rprovider.log
+* Linux: ~/.local/state/RProvider/rprovider.log
 
-Enabling logging on Mac/Linux
------------------------------
 
-If you're using Xamarin Studio on Mac, then the easiest option is to set the
-variable from Terminal and then start Xamarin Studio from terminal. Note that
-if you set the environment variable from terminal, but launch Xamarin Studio
-from Dock or in some other way, it will not see the variable!
+To enable logging
+---------------------------
 
-The following should do the trick (assuming the folder `/Users/tomasp/Temp` exists):
+Logging is controlled by a single environment variable:
 
-    [lang=text]
-    export RPROVIDER_LOG=/Users/tomasp/Temp/rlog.txt
-    open -n /Applications/Xamarin\ Studio.app/
+```bash
+RPROVIDER_LOG=true
+```
 
-This will set the variable and start a new instance of Xamarin Studio in the current
-context. Once it appears, reporduce the operation that causes the error, close
-Xamarin Studio and look at the log file.
+### Windows
 
-Enabling logging in a custom build
-----------------------------------
+To set on Windows:
+1. Open System Properties → Advanced → Environment Variables
+2. Under User variables, click New…
+3. Add:
 
-If you're building R provider from source, you can also enable logging by changing
-the `loggingEnabled` constant in the source code (and change `logFile` if you want
-to override the default location). See the [right place for this on
-GitHub](https://github.com/fslaborg/RProvider/blob/master/src/RProvider/Logging.fs#L13).
+```
+Name:  RPROVIDER_LOG
+Value: true
+```
+4. Restart Visual Studio / Code / your IDE so that it picks up the new environment variable.
+
+### macOS
+
+On macOS, apps do not inherit Terminal environment variables. You must therefore set the environment variable and launch your IDE from the same terminal session. For example:
+
+```bash
+export RPROVIDER_LOG=true
+open -n /Applications/Visual\ Studio\ Code.app
+```
+
+### Linux
+
+Similar to macOS, to set temporarily and launch VS Code:
+
+```bash
+export RPROVIDER_LOG=true
+code .
+```

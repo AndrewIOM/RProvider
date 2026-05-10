@@ -1,192 +1,266 @@
-﻿namespace RProvider
+﻿namespace RProvider.DesignTime
 
 open System.Collections.Generic
-open System.Reflection
 open ProviderImplementation.ProvidedTypes
-open RProvider
-open RProvider.Internal
-open RInterop
-open RInteropClient
-open PipeMethodCalls
+open RProvider.Common
+open RProvider.Common.InteropServer
+open System.Collections.Concurrent
+open RProvider.Common.Serialisation
+open System.Reflection
+open RProvider.Abstractions
 
 module internal RTypeBuilder =
 
+    /// Replace dots in R names with underscores, making
+    /// them safe for use as .NET type names.
+    let makeSafeName (name: string) = name.Replace("_", "__").Replace(".", "_")
+
+    type PackageMetadata =
+        {
+            Load : Lazy<unit>
+            Bindings : Lazy<(string * string)[]>
+            Titles : Lazy<Map<string,string>>
+            XmlDoc : Lazy<string>
+        }
+
+    let packageCache = ConcurrentDictionary<string, PackageMetadata>()
+
+    /// Lazily loads a package and gets the bindings and descriptions for functions
+    /// within the package.
+    let getPackageMetadata (server: RInteropClient.RawPipeClient) package =
+        packageCache.GetOrAdd(package, fun _ ->
+            {
+                Load = lazy (
+                        LogFile.logf "[DesignTime] Loading package: %s" package
+                        server.Call <| ServerRequest.LoadPackage package)
+                Bindings = lazy (
+                        LogFile.logf "[DesignTime] Getting bindings for: %s" package
+                        server.Call <| ServerRequest.GetBindings package)
+                Titles = lazy (
+                    LogFile.logf "[DesignTime] Getting titles for: %s" package
+                    server.Call<(string * string)[]> (ServerRequest.GetFunctionDescriptions package)
+                    |> Map.ofSeq
+                )
+                XmlDoc = lazy (
+                    LogFile.logf "[DesignTime] Getting XML docs for: %s" package
+                    server.Call <| ServerRequest.GetPackageDescription package)
+            }
+        )
+
     /// Assuming initialization worked correctly, generate the types using R engine
     let generateTypes ns asm =
-        withServer
-        <| fun server ->
             [ // Expose all available packages as namespaces
-              Logging.logf "generateTypes: getting packages"
+              LogFile.logf "[DesignTime] Fetching package list."
               let packages =
                   [ yield "base", ns
                     for package in
-                        server.InvokeAsync(fun s -> s.GetPackages()) |> Async.AwaitTask |> Async.RunSynchronously do
+                        RInteropClient.server.Value.Call GetPackages do
                         yield package, ns + "." + makeSafeName package ]
+
+              LogFile.logf "[DesignTime] Packages found: %A" packages
 
               for package, pns in packages do
                   let pty = ProvidedTypeDefinition(asm, pns, "R", Some(typeof<obj>))
 
                   pty.AddXmlDocDelayed
                   <| fun () ->
-                      withServer
-                      <| fun serverDelayed ->
-                          serverDelayed.InvokeAsync(fun s -> s.GetPackageDescription package)
-                          |> Async.AwaitTask
-                          |> Async.RunSynchronously
+                      try
+                        let md = getPackageMetadata RInteropClient.server.Value package
+                        md.XmlDoc.Force()
+                      with ex ->
+                        LogFile.logf "XmlDoc error for package %s: %O" package ex
+                        sprintf "RProvider: documentation for package '%s' is unavailable (%s)" package ex.Message
 
-                  pty.AddMembersDelayed
-                      (fun () ->
-                          withServer
-                          <| fun serverDelayed ->
-                              [ serverDelayed.InvokeAsync(fun s -> s.LoadPackage package)
-                                |> Async.AwaitTask
-                                |> Async.RunSynchronously
-                                let bindings =
-                                    serverDelayed.InvokeAsync(fun s -> s.GetBindings package)
-                                    |> Async.AwaitTask
-                                    |> Async.RunSynchronously
+                  pty.AddMembersDelayed (fun () ->
+                    
+                    LogFile.logf "[DesignTime] Computing delayed member (%s)" package
+                    try
+                        [ 
+                            // We get the function descriptions for R the first time they are needed
+                            let md = getPackageMetadata RInteropClient.server.Value package
+                            let bindings = md.Bindings.Force()
+                            let titles = md.Titles.Force()
+                            LogFile.logf "Bindings were %A" bindings
+                            LogFile.logf "Titles were %A" titles
 
-                                // We get the function descriptions for R the first time they are needed
-                                let titles =
-                                    lazy
-                                        (Map.ofSeq (
-                                            withServer
-                                                (fun s -> s.InvokeAsync(fun s -> s.GetFunctionDescriptions package))
-                                            |> Async.AwaitTask
-                                            |> Async.RunSynchronously
-                                        ))
+                            for name, serializedRVal in bindings do
+                                let memberName = makeSafeName name
 
-                                for name, serializedRVal in bindings do
-                                    let memberName = makeSafeName name
-
-                                    match RInterop.deserializeRValue serializedRVal with
-                                    | RValue.Function (paramList, hasVarArgs) ->
-                                        let paramList =
-                                            [ for p in paramList ->
+                                match deserializeRValue serializedRVal with
+                                | RValue.Function (paramList, hasVarArgs) ->
+                                    let paramList =
+                                        [ 
+                                            for p in paramList ->
                                                 ProvidedParameter(makeSafeName p, typeof<obj>, optionalValue = null)
 
-                                              if hasVarArgs then
-                                                  yield
-                                                      ProvidedParameter(
-                                                          "paramArray",
-                                                          typeof<obj []>,
-                                                          optionalValue = null,
-                                                          IsParamArray = true
-                                                      ) ]
+                                            if hasVarArgs then
+                                                yield
+                                                    ProvidedParameter(
+                                                        "paramArray",
+                                                        typeof<obj []>,
+                                                        optionalValue = null,
+                                                        IsParamArray = true
+                                                    ) ]
 
-                                        let paramCount = paramList.Length
+                                    let paramCount = paramList.Length
+                                    let pm =
+                                        ProvidedMethod(
+                                            methodName = memberName,
+                                            parameters = paramList,
+                                            returnType = typeof<RExpr>,
+                                            isStatic = true,
+                                            invokeCode =
+                                                fun args ->
+                                                    if args.Length <> paramCount then
+                                                        failwithf
+                                                            "Expected %d arguments and received %d"
+                                                            paramCount
+                                                            args.Length
 
-                                        let pm =
-                                            ProvidedMethod(
-                                                methodName = memberName,
-                                                parameters = paramList,
-                                                returnType = typeof<RDotNet.SymbolicExpression>,
-                                                isStatic = true,
-                                                invokeCode =
-                                                    fun args ->
-                                                        if args.Length <> paramCount then
-                                                            failwithf
-                                                                "Expected %d arguments and received %d"
-                                                                paramCount
-                                                                args.Length
+                                                    if hasVarArgs then
 
-                                                        if hasVarArgs then
-                                                            let namedArgs =
-                                                                Array.sub (Array.ofList args) 0 (paramCount - 1)
-                                                                |> List.ofArray
+                                                        let namedArgs =
+                                                            Array.sub (Array.ofList args) 0 (paramCount - 1)
+                                                            |> List.ofArray
 
-                                                            let namedArgs =
-                                                                Quotations.Expr.NewArray(typeof<obj>, namedArgs)
+                                                        let nameValueTuples =
+                                                            (paramList |> List.take (paramCount - 1), namedArgs)
+                                                            ||> List.map2 (fun p argExpr ->
+                                                                Quotations.Expr.NewTuple [
+                                                                    Quotations.Expr.Value p.Name
+                                                                    argExpr 
+                                                                ] )
 
-                                                            let varArgs = args.[paramCount - 1]
+                                                        let namedArgsArray = Quotations.Expr.NewArray(typeof<string * obj>, nameValueTuples)
+                                                        let varArgs = args.[paramCount - 1]
 
-                                                            <@@ RInterop.call
-                                                                    package
-                                                                    name
-                                                                    serializedRVal
-                                                                    %%namedArgs
-                                                                    %%varArgs @@>
-                                                        else
-                                                            let namedArgs = Quotations.Expr.NewArray(typeof<obj>, args)
+                                                        <@@
+                                                            let named = %%namedArgsArray : array<string * obj>
+                                                            let filteredNamedArgs =
+                                                                named
+                                                                |> Array.filter(fun (n,o) -> isNull o |> not )
+                                                            let globEnv = RProvider.Runtime.IRInteropRuntime.globalEnvironment()
+                                                            RProvider.Runtime.IRInteropRuntime.callFuncByName
+                                                                globEnv
+                                                                package
+                                                                name
+                                                                filteredNamedArgs
+                                                                %%varArgs @@>
+                                                    else
+                                                        // All args are positional named args
+                                                        let nameValueTuples =
+                                                            (paramList, args)
+                                                            ||> List.map2 (fun p argExpr ->
+                                                                Quotations.Expr.NewTuple [
+                                                                    Quotations.Expr.Value p.Name
+                                                                    argExpr 
+                                                                ] )
 
-                                                            <@@ RInterop.call
-                                                                    package
-                                                                    name
-                                                                    serializedRVal
-                                                                    %%namedArgs
-                                                                    [||] @@>
-                                            )
+                                                        let namedArgsArray = Quotations.Expr.NewArray(typeof<string * obj>, nameValueTuples)
+                                                        let emptyVarArgs = Quotations.Expr.NewArray(typeof<obj>, [])
 
-                                        pm.AddXmlDocDelayed
-                                            (fun () ->
-                                                match titles.Value.TryFind name with
-                                                | Some docs -> docs
-                                                | None -> "No documentation available")
+                                                        <@@ let globEnv = RProvider.Runtime.IRInteropRuntime.globalEnvironment()
+                                                            let named = %%namedArgsArray : array<string * obj>
+                                                            let filteredNamedArgs =
+                                                                named
+                                                                |> Array.filter(fun (n,o) -> isNull o |> not )
 
-                                        yield pm :> MemberInfo
+                                                            RProvider.Runtime.IRInteropRuntime.callFuncByName
+                                                                globEnv
+                                                                package
+                                                                name
+                                                                filteredNamedArgs
+                                                                %%emptyVarArgs @@>
+                                        )
+                                    
+                                    let addDoc () =
+                                        match titles.TryFind name with
+                                        | Some docs -> docs
+                                        | None -> "No documentation available"
+                                    
+                                    pm.AddXmlDocDelayed addDoc
 
-                                        let byName t q =
-                                            ProvidedMethod(
-                                                methodName = memberName,
-                                                parameters =
-                                                    [ ProvidedParameter(
-                                                          "paramsByName",
-                                                          t
-                                                      ) ],
-                                                returnType = typeof<RDotNet.SymbolicExpression>,
-                                                isStatic = true,
-                                                invokeCode =
-                                                    fun args ->
-                                                        if args.Length <> 1 then
-                                                            failwithf "Expected 1 argument and received %d" args.Length
-                                                        let argsByName = args.[0]
-                                                        q argsByName
-                                            )
+                                    yield pm :> MemberInfo                                        
 
-                                        // Yield an additional overload that takes a Dictionary<string, object>
-                                        // This variant is more flexible for constructing lists, data frames etc.
-                                        let pdm =
-                                            byName (typeof<IDictionary<string, obj>>) (fun argsByName -> 
-                                                <@@ let vals: IDictionary<string, obj> = %%argsByName
-                                                    let valSeq = vals :> seq<KeyValuePair<string, obj>>
-                                                    RInterop.callFunc package name valSeq null @@> )
+                                    let byName t q =
+                                        ProvidedMethod(
+                                            methodName = memberName,
+                                            parameters =
+                                                [ ProvidedParameter(
+                                                        "paramsByName",
+                                                        t
+                                                    ) ],
+                                            returnType = typeof<RExpr>,
+                                            isStatic = true,
+                                            invokeCode =
+                                                fun args ->
+                                                    if args.Length <> 1 then
+                                                        failwithf "Expected 1 argument and received %d" args.Length
+                                                    let argsByName = args.[0]
+                                                    q argsByName
+                                        )
 
-                                        yield pdm :> MemberInfo
+                                    // Yield an additional overload that takes a Dictionary<string, object>
+                                    // This variant is more flexible for constructing lists, data frames etc.
+                                    let pdm =
+                                        byName typeof<IDictionary<string, obj>> (fun argsByName -> 
+                                            <@@ let vals : IDictionary<string,obj> = %%argsByName
+                                                let namedArgs : (string * obj)[] = vals |> Seq.map (fun kv -> kv.Key, kv.Value) |> Seq.toArray
+                                                let varArgs : obj[] = [||]
+                                                let globEnv = RProvider.Runtime.IRInteropRuntime.globalEnvironment()
+                                                RProvider.Runtime.IRInteropRuntime.callFuncByName globEnv package name namedArgs varArgs @@> )
+                                    pdm.AddXmlDocDelayed addDoc
 
-                                        // Yield alternative overload that takes a list of string * obj.
-                                        // This option requires less boilerplate (i.e. no namedParams).
-                                        let plm =
-                                            byName (typeof<(string * obj) list>) (fun argsByName -> 
-                                                <@@ let duplicates : list<string * list<string * obj>> = %%argsByName |> List.groupBy fst |> List.filter( fun (_,set) -> set.Length > 1)
-                                                    if duplicates |> List.isEmpty |> not then failwithf "Recieved duplicate arguments: %A" (duplicates |> List.map fst)
-                                                    let vals: (string * obj) list = %%argsByName
-                                                    let valSeq = vals |> Seq.map KeyValuePair
-                                                    RInterop.callFunc package name valSeq null @@> )
-                                                    
-                                        yield plm :> MemberInfo
+                                    yield pdm :> MemberInfo
 
-                                    | RValue.Value ->
-                                        yield
-                                            ProvidedProperty(
-                                                propertyName = memberName,
-                                                propertyType = typeof<RDotNet.SymbolicExpression>,
-                                                isStatic = true,
-                                                getterCode =
-                                                    fun _ -> <@@ RInterop.call package name serializedRVal [||] [||] @@>
-                                            )
-                                            :> MemberInfo ])
+                                    // Yield alternative overload that takes a list of string * obj.
+                                    // This option requires less boilerplate (i.e. no namedParams).
+                                    let plm =
+                                        byName (typeof<(string * obj) list>) (fun argsByName -> 
+                                            <@@ 
+                                                
+                                                let vals : (string * obj) list = %%argsByName
+                                                let duplicates =
+                                                    vals
+                                                    |> List.groupBy fst
+                                                    |> List.filter (fun (_, set) -> set.Length > 1)
 
+                                                if duplicates |> List.isEmpty |> not then failwithf "Recieved duplicate arguments: %A" (duplicates |> List.map fst)
+                                                let namedArgs : (string * obj)[] = vals |> List.toArray
+                                                let varArgs : obj[] = [||]
+                                                let globEnv = RProvider.Runtime.IRInteropRuntime.globalEnvironment()
+                                                RProvider.Runtime.IRInteropRuntime.callFuncByName globEnv package name namedArgs varArgs @@> )
+                                                
+                                    plm.AddXmlDocDelayed addDoc
+                                    yield plm :> MemberInfo
+
+                                | RValue.Value ->
+                                    yield
+                                        ProvidedProperty(
+                                            propertyName = memberName,
+                                            propertyType = typeof<RExpr>,
+                                            isStatic = true,
+                                            getterCode =
+                                                fun _ ->
+                                                    <@@ RProvider.Runtime.IRInteropRuntime.getValue package name @@>
+                                        )
+                                        :> MemberInfo ]
+                    with ex ->
+                        LogFile.logf "Members error for package %s: %O" package ex
+                        []
+                    )
                   yield pns, [ pty ] ]
 
     /// Check if R is installed - if no, generate type with properties displaying
     /// the error message, otherwise go ahead and use 'generateTypes'!
     let initAndGenerate providerAssembly =
         [ // Get the assembly and namespace used to house the provided types
-          Logging.logf "initAndGenerate: starting"
+          LogFile.logf "[DesignTime] initAndGenerate: starting"
           let ns = "RProvider"
-
-          match tryGetInitializationError () |> Async.RunSynchronously with // TODO Remove synchronous
-          | null -> yield! generateTypes ns providerAssembly
+          match RInteropClient.tryGetInitializationError () with
+          | "" ->
+            LogFile.logf "[DesignTime] R server found. Generating types."
+            yield! generateTypes ns providerAssembly
           | error ->
               // add an error static property (shown when typing `R.`)
               let pty = ProvidedTypeDefinition(providerAssembly, ns, "R", Some(typeof<obj>))
@@ -200,4 +274,4 @@ module internal RTypeBuilder =
               // add an error namespace (shown when typing `open RProvider.`)
               yield ns + ".Error: " + error, [ pty ]
 
-          Logging.logf "initAndGenerate: finished" ]
+          LogFile.logf "[DesignTime] initAndGenerate: finished" ]

@@ -1,17 +1,14 @@
 (**
 ---
-category: Documentation
-categoryindex: 1
-index: 5
+category: Guides
+categoryindex: 4
+index: 1
 ---
 *)
 
 (*** condition: prepare ***)
 #nowarn "211"
-#r "../src/RProvider/bin/Release/net5.0/RDotNet.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.Runtime.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.DesignTime.dll"
-#r "../src/RProvider/bin/Release/net5.0/RProvider.dll"
+#r "nuget: RProvider, 0.0.1-local"
 (*** condition: fsx ***)
 #if FSX
 #r "nuget: RProvider,{{package-version}}"
@@ -51,7 +48,7 @@ saved values as static members:
 *)
 open RProvider
 
-type Sample = RData<"data/sample.rdata">
+type Sample = RData<"data/sample.rdata", ResolutionFolder = __SOURCE_DIRECTORY__>
 let sample = Sample()
 
 // Easily access saved values
@@ -78,10 +75,6 @@ let means =
       let data = Sample(sprintf "data/sample_%d.rdata" i)
       data.volcanoMean.[0] ]
 (**
-Note that the default conversions available depend on the plugins that are currently
-available. For example, when you install the enrie [FsLab](http://www.fslab.org) package
-with the [Deedle](https://fslab.org/Deedle/) library, the `RData` 
-provider will automatically expose data frames as Deedle `Frame<string, string>` values.
 
 Passing data from F# to R
 -------------------------
@@ -92,10 +85,10 @@ option is to call the `R.assign` function to define named values in the R enviro
 and then use `R.save` to save the environment to a file:
 *)
 // Calculate sum of square differences
-let avg = sample.volcanoList |> Array.average
+let avg = sample.volcanoList |> Array.choose id |> Array.average
 let sqrs = 
   sample.volcanoList 
-  |> Array.map (fun v -> pown (v - avg) 2)
+  |> Array.map (fun v -> pown (v.Value - avg) 2)
 
 // Save the squares to an RData file
 R.assign("volcanoDiffs", sqrs)

@@ -1,43 +1,63 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <FSharpToolsDirectory>typeproviders</FSharpToolsDirectory>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Common/AssemblyInfo.fs" />
+    <Compile Include="../Common/LogFile.fs" />
+    <Compile Include="RInstance.fs" />
+    <Compile Include="Evaluate.fs" />
+    <Compile Include="SemanticTypes.fs" />
+    <Compile Include="Converters.fs" />
+    <Compile Include="SymbolicExpressionExtensions.fs" />
+    <Compile Include="RInterop.fs" />
+    <Compile Include="RExprExtensions.fs" />
+    <Compile Include="REnv.fs" />
+    <Compile Include="IRInteropRuntime.fs" />
+    <Compile Include="Operators.fs" />
+    <Compile Include="FSIPrinters.fs" />
     <Compile Include="RProviderAttribute.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../RProvider.DesignTime/RProvider.DesignTime.fsproj" PrivateAssets="All" />
-    <ProjectReference Include="../RProvider.Runtime/RProvider.Runtime.fsproj" PrivateAssets="All" />
-    <ProjectReference Include="../RProvider.Server/RProvider.Server.fsproj" PrivateAssets="All" />
+    <ProjectReference Include="../RProvider.DesignTime/RProvider.DesignTime.fsproj">
+      <IsFSharpDesignTimeProvider>true</IsFSharpDesignTimeProvider>
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
+    <ProjectReference Include="../RProvider.Abstractions/RProvider.Abstractions.fsproj">
+      <PrivateAssets>all</PrivateAssets>
+    </ProjectReference>
+    <PackageReference Update="FSharp.Core" Version="8.0.403" />
   </ItemGroup>
   <ItemGroup>
     <None Include="../../docs/img/logo.png" Pack="true" PackagePath="/">
         <PackageCopyToOutput>true</PackageCopyToOutput>
     </None>
-    <None Include="bin/Release/net5.0/server/**" Pack="true" PackagePath="/lib/net5.0/server/">
-        <PackageCopyToOutput>true</PackageCopyToOutput>
-    </None>
-    <None Include="RProvider.Runtime.dll.config" Pack="true" PackagePath="/lib/net5.0/">
-        <PackageCopyToOutput>true</PackageCopyToOutput>
-    </None>
+    <None Include="../RProvider.Server/bin/$(Configuration)/net10.0/*/publish/**"
+          Pack="true"
+          PackagePath="tools/server/"
+          PackageCopyToOutput="true" />
+    <None Include="..\RProvider.Abstractions\bin\$(Configuration)\netstandard2.0\RProvider.Abstractions.dll"
+          Pack="true"
+          PackagePath="lib/net10.0/" />
   </ItemGroup>
-  <PropertyGroup>
-    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage
-    </TargetsForTfmSpecificBuildOutput>
-  </PropertyGroup>
-  <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+
+  <Target Name="IncludeServerInPackage" BeforeTargets="Build">
     <ItemGroup>
-      <!-- Filter out unnecessary files -->
-      <_ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('ReferenceSourceTarget', 'ProjectReference')-&gt;WithMetadataValue('PrivateAssets', 'All'))" />
+      <_RIDs Include="win-x64;linux-x64;osx-x64;linux-arm64;osx-arm64" />
     </ItemGroup>
-    <Message Text="Batch for .nupkg: ReferenceCopyLocalPaths = @(_ReferenceCopyLocalPaths), ReferenceCopyLocalPaths.DestinationSubDirectory = %(_ReferenceCopyLocalPaths.DestinationSubDirectory) Filename = %(_ReferenceCopyLocalPaths.Filename) Extension = %(_ReferenceCopyLocalPaths.Extension)" Importance="High" Condition="'@(_ReferenceCopyLocalPaths)' != ''" />
-    <ItemGroup>
-      <BuildOutputInPackage Include="@(_ReferenceCopyLocalPaths)" TargetPath="%(_ReferenceCopyLocalPaths.DestinationSubDirectory)" />
-    </ItemGroup>
+    <MSBuild
+      Projects="../RProvider.Server/RProvider.Server.fsproj"
+      Targets="Publish"
+      Properties="
+        Configuration=$(Configuration);
+        RuntimeIdentifier=%(_RIDs.Identity);
+        SelfContained=false;
+        PublishSingleFile=false" />
   </Target>
+
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
