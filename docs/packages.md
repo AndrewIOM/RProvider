@@ -1,7 +1,8 @@
 ---
-category: Documentation
-categoryindex: 1
-index: 3
+title: Using R Packages
+category: Guides
+categoryindex: 4
+index: 2
 ---
 
 # How to

@@ -1,7 +1,8 @@
 ﻿(**
 ---
-category: Documentation
-categoryindex: 1
+title: Quickstart: Graphics
+category: Getting Started
+categoryindex: 2
 index: 3
 ---
 *)

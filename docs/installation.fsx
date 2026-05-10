@@ -1,7 +1,8 @@
 (**
 ---
-category: Documentation
-categoryindex: 1
+title: Installing
+category: Getting Started
+categoryindex: 2
 index: 1
 ---
 *)
@@ -19,7 +20,7 @@ index: 1
 #endif // IPYNB
 
 (** 
-Requirements: Getting Started
+Installing RProvider
 =================================
 
 The R type provider can be used on macOS, Windows, and Linux (for supported OS versions,

@@ -1,8 +1,8 @@
 (**
 ---
-category: Documentation
-categoryindex: 1
-index: 5
+category: Guides
+categoryindex: 4
+index: 1
 ---
 *)
 
@@ -48,7 +48,7 @@ saved values as static members:
 *)
 open RProvider
 
-type Sample = RData<"data/sample.rdata">
+type Sample = RData<"data/sample.rdata", ResolutionFolder = __SOURCE_DIRECTORY__>
 let sample = Sample()
 
 // Easily access saved values

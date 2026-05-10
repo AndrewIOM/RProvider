@@ -1,8 +1,8 @@
 (**
 ---
-category: Documentation
-categoryindex: 1
-index: 3
+category: Core Concepts
+categoryindex: 3
+index: 2
 ---
 *)
 
@@ -24,7 +24,7 @@ open RProvider
 (**
 # Passing Data Between F# and R
 
-## Passing Parameters
+## F# to R: passing data to functions
 
 ### Parameter Passing Conventions
 
@@ -87,7 +87,7 @@ let resInt = res.TryAsVector.Value.AsReal()
 
 (**
 
-### Convert the data into a specified .NET type via GetValue<type>()
+### Convert the data into a specified .NET type via FromR<type>()
 
 RProvider adds a generic `GetValue<'T>` extension method to `SymbolicExpression`.  This supports conversions from certain R values to specific .NET types.  Here are the currently supported conversions:
 
@@ -107,7 +107,7 @@ RProvider adds a generic `GetValue<'T>` extension method to `SymbolicExpression`
 
 Custom conversions can be supported through [plugins](plugins.html).
 
-### Convert the data into the default .NET type the .Value property
+### Convert the data into the default .NET type via .FromR()
 
 We also expose an extension property called Value that performs a _default_ conversion of a SymbolicExpresion to a .NET type.  These are the current conversions:
 
@@ -120,11 +120,4 @@ We also expose an extension property called Value that performs a _default_ conv
 <tr><td>numeric</td><td>double[]</td></tr>
 </table>
 
-Again, custom conversions can be supported through [plugins](plugins.html).
-
-## What if I commonly need an argument or result conversion that RProvider does not support?
-
-If you believe the argument conversion is universally appropriate and should be available to everybody, please fork the repo and submit a pull request.
-
-RProvider also supports custom conversions to/from your own data types using [plugins](plugins.html).
 *)

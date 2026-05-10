@@ -1,8 +1,9 @@
 (** 
 ---
-category: Core Concepts
-categoryindex: 3
-index: 3
+title: R Semantic Types
+category: Guides
+categoryindex: 4
+index: 1
 ---
 *)
 

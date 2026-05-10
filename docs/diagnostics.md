@@ -1,7 +1,7 @@
 ---
-category: Developer
-categoryindex: 2
-index: 3
+category: Advanced
+categoryindex: 8
+index: 2
 ---
 
 Diagnostics and debugging

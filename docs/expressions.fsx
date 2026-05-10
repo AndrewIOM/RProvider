@@ -1,8 +1,9 @@
 (** 
 ---
-category: Documentation
-categoryindex: 1
-index: 4
+title: R Expressions
+category: Core Concepts
+categoryindex: 3
+index: 1
 ---
 *)
 
