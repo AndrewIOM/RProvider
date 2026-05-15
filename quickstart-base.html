@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en" data-root="https://fslab.org/RProvider/">
+<head>
+    <meta charset="UTF-8">
+    <meta content="IE=edge" http-equiv="X-UA-Compatible">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta content="BlueMountain Capital;FsLab" name="author">
+    <!-- Opengraph properties (https://ogp.me/) -->
+    <meta property="og:site_name" content="RProvider">
+    <meta property="og:title" content="Quickstart: stats" />
+    <meta property="og:url" content="https://fslab.org/RProvider/quickstart-base.html">
+    <meta property="og:type" content="website" />
+    <!-- Twitter cards (https://developer.twitter.com/en/docs/twitter-for-websites/cards/overview/summary-card-with-large-image) -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="https://fslab.org/RProvider/">
+    <meta name="twitter:title" content="Quickstart: stats">
+    
+    <title>Quickstart: stats | RProvider</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link href="https://fslab.org/RProvider/img/favicon.ico" rel="icon" sizes="32x32" type="image/png"/>
+    <script type="application/javascript" src="https://fslab.org/RProvider/content/fsdocs-theme-set-dark.js"></script>
+    <script type="application/javascript" src="https://fslab.org/RProvider/content/fsdocs-details-set-expanded.js"></script>
+    <link href="https://fslab.org/RProvider/content/fsdocs-default.css" rel="stylesheet" type="text/css"/>
+    <link href="https://fslab.org/RProvider/content/fsdocs-theme.css" rel="stylesheet" type="text/css"/>
+    
+    
+</head>
+<body class="content">
+<header>
+    <div class="start">
+        <div id="menu-toggle">
+            <iconify-icon class="icon closed" height="22" icon="eva:menu-fill" width="22"></iconify-icon>
+            <iconify-icon class="icon open" height="22" icon="mi:close" width="22"></iconify-icon>
+            <input type="checkbox" name="mobile-menu" />
+            <ul class="menu">
+                <li class="nav-header">Links</li>
+                <li class="license-menu-item builtin-menu-item nav-item"><a class="nav-link" href="https://github.com/fslaborg/RProvider/blob/master/LICENSE.md">License</a>
+                </li>
+                <li class="release-notes-menu-item builtin-menu-item nav-item"><a class="nav-link"
+                                        href="https://github.com/fslaborg/RProvider/blob/master/RELEASE_NOTES.md">Release
+                    Notes</a></li>
+                <li class="repository-menu-item builtin-menu-item nav-item"><a class="nav-link" href="https://github.com/fslaborg/RProvider/">Source
+                    Repository</a></li>
+                <li class="nav-header ">
+  Overview
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/whatwhy.html">
+    Whats and Whys
+
+  </a>
+</li>             
+<li class="nav-header active">
+  Getting Started
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/installation.html">
+    Installing
+  </a>
+</li>             
+<li class="nav-item active">
+  <a class="nav-link" href="https://fslab.org/RProvider/quickstart-base.html">
+    Quickstart: stats
+  </a>
+</li>             
+<li class="nav-header ">
+  Core Concepts
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/expressions.html">
+    R Expressions
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/semantic-types.html">
+    R Semantic Types
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/passing-data.html">
+    Passing Data into R functions from F#
+
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/operators.html">
+    Operators
+
+  </a>
+</li>             
+<li class="nav-header ">
+  Guides
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/reading-rdata.html">
+    Reading and writing R data files
+
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/plots.html">
+    Plots and graphics
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/packages.html">
+    R Packages and Environments
+  </a>
+</li>             
+<li class="nav-header ">
+  Advanced
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/devnotes.html">
+    Developer notes
+
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/diagnostics.html">
+    Diagnostics and debugging
+
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/internals.html">
+    How does it work?
+
+  </a>
+</li>
+                <li class="nav-header">
+  API Reference
+</li>             
+<li class="nav-item">
+  <a class="nav-link" href="https://fslab.org/RProvider/reference/index.html">
+    All Namespaces
+  </a>
+</li>
+            </ul>
+        </div>
+        <a href="https://fslab.org/RProvider/">
+            <img alt="Logo" src="https://fslab.org/RProvider/img/logo.png">
+            <strong>RProvider</strong>
+        </a>
+    </div>
+    <div class="end">
+        <a href="https://github.com/fslaborg/RProvider/" target="_blank">
+            <iconify-icon icon="uil:github" width="26" height="26"></iconify-icon>
+        </a>
+        <iconify-icon id="search-btn" icon="carbon:search" class="search" width="24" height="24"></iconify-icon>
+        <fsdocs-theme-toggle></fsdocs-theme-toggle>
+    </div>
+</header>
+<aside id="fsdocs-main-menu">
+    <ul class="menu">
+        <li class="nav-header">Links</li>
+        <li class="license-menu-item builtin-menu-item nav-item"><a class="nav-link" href="https://github.com/fslaborg/RProvider/blob/master/LICENSE.md">License</a>
+        </li>
+        <li class="release-notes-menu-item builtin-menu-item nav-item"><a class="nav-link"
+                                href="https://github.com/fslaborg/RProvider/blob/master/RELEASE_NOTES.md">Release
+            Notes</a></li>
+        <li class="repository-menu-item builtin-menu-item nav-item"><a class="nav-link" href="https://github.com/fslaborg/RProvider/">Source
+            Repository</a></li>
+        <li class="nav-header ">
+  Overview
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/whatwhy.html">
+    Whats and Whys
+
+  </a>
+</li>             
+<li class="nav-header active">
+  Getting Started
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/installation.html">
+    Installing
+  </a>
+</li>             
+<li class="nav-item active">
+  <a class="nav-link" href="https://fslab.org/RProvider/quickstart-base.html">
+    Quickstart: stats
+  </a>
+</li>             
+<li class="nav-header ">
+  Core Concepts
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/expressions.html">
+    R Expressions
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/semantic-types.html">
+    R Semantic Types
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/passing-data.html">
+    Passing Data into R functions from F#
+
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/operators.html">
+    Operators
+
+  </a>
+</li>             
+<li class="nav-header ">
+  Guides
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/reading-rdata.html">
+    Reading and writing R data files
+
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/plots.html">
+    Plots and graphics
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/packages.html">
+    R Packages and Environments
+  </a>
+</li>             
+<li class="nav-header ">
+  Advanced
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/devnotes.html">
+    Developer notes
+
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/diagnostics.html">
+    Diagnostics and debugging
+
+  </a>
+</li>             
+<li class="nav-item ">
+  <a class="nav-link" href="https://fslab.org/RProvider/internals.html">
+    How does it work?
+
+  </a>
+</li>
+        <li class="nav-header">
+  API Reference
+</li>             
+<li class="nav-item">
+  <a class="nav-link" href="https://fslab.org/RProvider/reference/index.html">
+    All Namespaces
+  </a>
+</li>
+    </ul>
+</aside>
+<main>
+    <div id="content">
+        
+<h1><a name="Quickstart-Using-Statistical-Packages" class="anchor" href="#Quickstart-Using-Statistical-Packages">Quickstart: Using Statistical Packages</a></h1>
+<p>A strong R community has contributed over 20,000 packages to CRAN,
+R's central package registry. The F# R Type Provider enables you to
+use every single one of them from within the F# environment.</p>
+<p>Using RRrovider, you can orchestrate R workflows and manipulate R data,
+pass in F# values, and extract R values back to F#.</p>
+<p>For this example, we simply demonstrate some basic RProvider concepts
+using the built-in <code>stats</code> package.</p>
+<h2><a name="Example-Linear-Regression" class="anchor" href="#Example-Linear-Regression">Example: Linear Regression</a></h2>
+<p>Let's perform a simple linear regression from the F# interactive,
+using the R.lm function.</p>
+<p>Once you have referenced RProvider's nuget package in your script,
+library, or app, you can reference the required libraries and packages this way:</p>
+<pre class="fssnip highlighted"><code lang="fsharp"><span class="k">open</span> <span data-fsdocs-tip="fs1" data-fsdocs-tip-unique="1" class="id">RProvider</span>
+<span class="k">open</span> <span data-fsdocs-tip="fs1" data-fsdocs-tip-unique="2" class="id">RProvider</span><span class="pn">.</span><span data-fsdocs-tip="fs2" data-fsdocs-tip-unique="3" class="m">Operators</span>
+
+<span class="k">open</span> <span data-fsdocs-tip="fs1" data-fsdocs-tip-unique="4" class="id">RProvider</span><span class="pn">.</span><span data-fsdocs-tip="fs3" data-fsdocs-tip-unique="5" class="id">graphics</span>
+<span class="k">open</span> <span data-fsdocs-tip="fs1" data-fsdocs-tip-unique="6" class="id">RProvider</span><span class="pn">.</span><span data-fsdocs-tip="fs4" data-fsdocs-tip-unique="7" class="id">stats</span>
+</code></pre>
+<p>Once the libraries and packages have been loaded,
+Imagine that our true model is</p>
+<p>Y = 5.0 + 3.0 * X1 - 2.0 * X2 + noise</p>
+<p>Let's generate a fake dataset using F# that follows this model:</p>
+<pre class="fssnip highlighted"><code lang="fsharp"><span class="c">// Random number generator</span>
+<span class="k">let</span> <span data-fsdocs-tip="fs5" data-fsdocs-tip-unique="8" class="id">rng</span> <span class="o">=</span> <span data-fsdocs-tip="fs6" data-fsdocs-tip-unique="9" class="id">System</span><span class="pn">.</span><span data-fsdocs-tip="fs7" data-fsdocs-tip-unique="10" class="id">Random</span><span class="pn">(</span><span class="pn">)</span>
+<span class="k">let</span> <span data-fsdocs-tip="fs8" data-fsdocs-tip-unique="11" class="fn">rand</span> <span class="pn">(</span><span class="pn">)</span> <span class="o">=</span> <span data-fsdocs-tip="fs5" data-fsdocs-tip-unique="12" class="id">rng</span><span class="pn">.</span><span data-fsdocs-tip="fs9" data-fsdocs-tip-unique="13" class="id">NextDouble</span><span class="pn">(</span><span class="pn">)</span>
+
+<span class="c">// Generate fake X1 and X2 </span>
+<span class="k">let</span> <span data-fsdocs-tip="fs10" data-fsdocs-tip-unique="14" class="id">X1s</span> <span class="o">=</span> <span class="pn">[</span> <span class="k">for</span> <span data-fsdocs-tip="fs11" data-fsdocs-tip-unique="15" class="fn">i</span> <span class="k">in</span> <span class="n">0</span> <span class="o">..</span> <span class="n">9</span> <span class="k">-&gt;</span> <span class="n">10.</span> <span class="o">*</span> <span data-fsdocs-tip="fs8" data-fsdocs-tip-unique="16" class="fn">rand</span> <span class="pn">(</span><span class="pn">)</span> <span class="pn">]</span>
+<span class="k">let</span> <span data-fsdocs-tip="fs12" data-fsdocs-tip-unique="17" class="id">X2s</span> <span class="o">=</span> <span class="pn">[</span> <span class="k">for</span> <span data-fsdocs-tip="fs11" data-fsdocs-tip-unique="18" class="fn">i</span> <span class="k">in</span> <span class="n">0</span> <span class="o">..</span> <span class="n">9</span> <span class="k">-&gt;</span> <span class="n">5.</span> <span class="o">*</span> <span data-fsdocs-tip="fs8" data-fsdocs-tip-unique="19" class="fn">rand</span> <span class="pn">(</span><span class="pn">)</span> <span class="pn">]</span>
+
+<span class="c">// Build Ys, following the &quot;true&quot; model</span>
+<span class="k">let</span> <span data-fsdocs-tip="fs13" data-fsdocs-tip-unique="20" class="id">Ys</span> <span class="o">=</span> <span class="pn">[</span> <span class="k">for</span> <span data-fsdocs-tip="fs11" data-fsdocs-tip-unique="21" class="fn">i</span> <span class="k">in</span> <span class="n">0</span> <span class="o">..</span> <span class="n">9</span> <span class="k">-&gt;</span> <span class="n">5.</span> <span class="o">+</span> <span class="n">3.</span> <span class="o">*</span> <span data-fsdocs-tip="fs10" data-fsdocs-tip-unique="22" class="id">X1s</span><span class="pn">.</span><span class="pn">[</span><span data-fsdocs-tip="fs11" data-fsdocs-tip-unique="23" class="fn">i</span><span class="pn">]</span> <span class="o">-</span> <span class="n">2.</span> <span class="o">*</span> <span data-fsdocs-tip="fs12" data-fsdocs-tip-unique="24" class="id">X2s</span><span class="pn">.</span><span class="pn">[</span><span data-fsdocs-tip="fs11" data-fsdocs-tip-unique="25" class="fn">i</span><span class="pn">]</span> <span class="o">+</span> <span data-fsdocs-tip="fs8" data-fsdocs-tip-unique="26" class="fn">rand</span> <span class="pn">(</span><span class="pn">)</span> <span class="pn">]</span>
+</code></pre>
+<p>Using linear regression on this dataset, we should be able to
+estimate the coefficients 5.0, 3.0 and -2.0, with some imprecision
+due to the "noise" part.</p>
+<p>Let's first put our dataset into a R dataframe; this allows us
+to name our vectors, and use these names in R formulas afterwards:</p>
+<pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span data-fsdocs-tip="fs14" data-fsdocs-tip-unique="27" class="id">dataset</span> <span class="o">=</span> <span class="pn">[</span> 
+    <span class="s">&quot;Y&quot;</span> <span class="o">=&gt;</span> <span data-fsdocs-tip="fs13" data-fsdocs-tip-unique="28" class="id">Ys</span>
+    <span class="s">&quot;X1&quot;</span> <span class="o">=&gt;</span> <span data-fsdocs-tip="fs10" data-fsdocs-tip-unique="29" class="id">X1s</span>
+    <span class="s">&quot;X2&quot;</span> <span class="o">=&gt;</span> <span data-fsdocs-tip="fs12" data-fsdocs-tip-unique="30" class="id">X2s</span> <span class="pn">]</span> <span class="o">|&gt;</span> <span data-fsdocs-tip="fs15" data-fsdocs-tip-unique="31" class="rt">R</span><span class="pn">.</span><span data-fsdocs-tip="fs16" data-fsdocs-tip-unique="32" class="id">data_frame</span>
+</code></pre>
+<p>We can now use R to perform a linear regression.
+We call the <a href="http://stat.ethz.ch/R-manual/R-patched/library/stats/html/lm.html">R.lm function</a>,
+passing it the formula we want to estimate.
+(See the <a href="http://stat.ethz.ch/R-manual/R-patched/library/stats/html/formula.html">R manual on formulas</a>
+for more on their somewhat esoteric construction)</p>
+<pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span data-fsdocs-tip="fs17" data-fsdocs-tip-unique="33" class="id">result</span> <span class="o">=</span> <span data-fsdocs-tip="fs18" data-fsdocs-tip-unique="34" class="rt">R</span><span class="pn">.</span><span data-fsdocs-tip="fs19" data-fsdocs-tip-unique="35" class="id">lm</span><span class="pn">(</span><span class="fn">formula</span> <span class="o">=</span> <span class="s">&quot;Y~X1+X2&quot;</span><span class="pn">,</span> <span class="fn">data</span> <span class="o">=</span> <span data-fsdocs-tip="fs14" data-fsdocs-tip-unique="36" class="id">dataset</span><span class="pn">)</span>
+</code></pre>
+<h2><a name="Extracting-Results-from-R-to-F" class="anchor" href="#Extracting-Results-from-R-to-F">Extracting Results from R to F#</a></h2>
+<p>The result we get back from R is a R Expression.
+The R Type Provider tries as much as possible to keep data
+as R Expressions, rather than converting back-and-forth
+between F# and R types. It limits translations
+between the 2 languages, which has performance benefits,
+and simplifies composing R operations. On the other hand,
+we need to extract the results from the R expression
+into F# types.</p>
+<p>The <a href="http://stat.ethz.ch/R-manual/R-patched/library/stats/html/lm.html">R docs for lm</a>
+describes what R.lm returns: a R List. We can now retrieve each element,
+accessing it by name (as defined in the documentation).
+For instance, let's retrieve the coefficients and residuals,
+which are both R vectors containg floats:</p>
+<pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span data-fsdocs-tip="fs20" data-fsdocs-tip-unique="37" class="id">coefficients</span> <span class="o">=</span> <span data-fsdocs-tip="fs17" data-fsdocs-tip-unique="38" class="id">result</span><span class="o">?</span><span data-fsdocs-tip="fs20" data-fsdocs-tip-unique="39" class="id">coefficients</span><span class="pn">.</span><span class="id">AsVector</span><span class="pn">(</span><span class="pn">)</span><span class="pn">.</span><span class="id">AsReal</span><span class="pn">(</span><span class="pn">)</span>
+<span class="k">let</span> <span data-fsdocs-tip="fs21" data-fsdocs-tip-unique="40" class="id">residuals</span> <span class="o">=</span> <span data-fsdocs-tip="fs17" data-fsdocs-tip-unique="41" class="id">result</span><span class="o">?</span><span data-fsdocs-tip="fs21" data-fsdocs-tip-unique="42" class="id">residuals</span><span class="pn">.</span><span class="id">AsVector</span><span class="pn">(</span><span class="pn">)</span><span class="pn">.</span><span class="id">AsReal</span><span class="pn">(</span><span class="pn">)</span>
+</code></pre>
+<p>We can also produce summary statistics about our model,
+like R^2, which measures goodness-of-fit - close to 0
+indicates a very poor fit, and close to 1 a good fit.
+See <a href="http://stat.ethz.ch/R-manual/R-patched/library/stats/html/summary.lm.html">R docs for the details on Summary</a>.</p>
+<pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span data-fsdocs-tip="fs22" data-fsdocs-tip-unique="43" class="id">summary</span> <span class="o">=</span> <span data-fsdocs-tip="fs15" data-fsdocs-tip-unique="44" class="rt">R</span><span class="pn">.</span><span data-fsdocs-tip="fs23" data-fsdocs-tip-unique="45" class="id">summary</span> <span data-fsdocs-tip="fs17" data-fsdocs-tip-unique="46" class="id">result</span>
+
+<span data-fsdocs-tip="fs22" data-fsdocs-tip-unique="47" class="id">summary</span><span class="o">?</span><span class="id">``r.squared``</span><span class="pn">.</span><span class="id">AsScalar</span><span class="pn">(</span><span class="pn">)</span>
+</code></pre>
+<table class="pre"><tr><td><pre><code>NumericS { Sexp = { ptr = 6263070096n } }</code></pre></td></tr></table>
+<p>Finally, we can directly pass results, which is a R expression,
+to R.plot, to produce some fancy charts describing our model:</p>
+<pre class="fssnip highlighted"><code lang="fsharp"><span data-fsdocs-tip="fs24" data-fsdocs-tip-unique="48" class="m">Graphics</span><span class="pn">.</span><span data-fsdocs-tip="fs25" data-fsdocs-tip-unique="49" class="id">svg</span> <span class="n">8</span> <span class="n">4</span> <span class="pn">(</span><span class="k">fun</span> <span class="id">_</span> <span class="k">-&gt;</span> <span data-fsdocs-tip="fs15" data-fsdocs-tip-unique="50" class="rt">R</span><span class="pn">.</span><span data-fsdocs-tip="fs26" data-fsdocs-tip-unique="51" class="id">plot</span> <span data-fsdocs-tip="fs17" data-fsdocs-tip-unique="52" class="id">result</span><span class="pn">)</span>
+</code></pre>
+<?xml version='1.0' encoding='UTF-8' ?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='576.00pt' height='288.00pt' viewBox='0 0 576.00 288.00'>
+<g class='svglite'>
+<defs>
+  <style type='text/css'><![CDATA[
+    .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {
+      fill: none;
+      stroke: #000000;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-miterlimit: 10.00;
+    }
+    .svglite text {
+      white-space: pre;
+    }
+    .svglite g.glyphgroup path {
+      fill: inherit;
+      stroke: none;
+    }
+  ]]></style>
+</defs>
+<rect width='100%' height='100%' style='stroke: none; fill: #FFFFFF;'/>
+<defs>
+  <clipPath id='cpMC4wMHw1NzYuMDB8MC4wMHwyODguMDA='>
+    <rect x='0.00' y='0.00' width='576.00' height='288.00' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMC4wMHw1NzYuMDB8MC4wMHwyODguMDA=)'>
+</g>
+<defs>
+  <clipPath id='cpNTkuMDR8NTQ1Ljc2fDU5LjA0fDIxNC41Ng=='>
+    <rect x='59.04' y='59.04' width='486.72' height='155.52' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpNTkuMDR8NTQ1Ljc2fDU5LjA0fDIxNC41Ng==)'>
+</g>
+<g clip-path='url(#cpMC4wMHw1NzYuMDB8MC4wMHwyODguMDA=)'>
+<line x1='77.07' y1='214.56' x2='473.37' y2='214.56' style='stroke-width: 0.75;' />
+<line x1='77.07' y1='214.56' x2='77.07' y2='221.76' style='stroke-width: 0.75;' />
+<line x1='176.14' y1='214.56' x2='176.14' y2='221.76' style='stroke-width: 0.75;' />
+<line x1='275.22' y1='214.56' x2='275.22' y2='221.76' style='stroke-width: 0.75;' />
+<line x1='374.29' y1='214.56' x2='374.29' y2='221.76' style='stroke-width: 0.75;' />
+<line x1='473.37' y1='214.56' x2='473.37' y2='221.76' style='stroke-width: 0.75;' />
+<text x='77.07' y='240.48' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='16.67px' lengthAdjust='spacingAndGlyphs'>0.0</text>
+<text x='176.14' y='240.48' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='16.67px' lengthAdjust='spacingAndGlyphs'>0.1</text>
+<text x='275.22' y='240.48' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='16.67px' lengthAdjust='spacingAndGlyphs'>0.2</text>
+<text x='374.29' y='240.48' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='16.67px' lengthAdjust='spacingAndGlyphs'>0.3</text>
+<text x='473.37' y='240.48' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='16.67px' lengthAdjust='spacingAndGlyphs'>0.4</text>
+<line x1='59.04' y1='209.11' x2='59.04' y2='63.93' style='stroke-width: 0.75;' />
+<line x1='59.04' y1='209.11' x2='51.84' y2='209.11' style='stroke-width: 0.75;' />
+<line x1='59.04' y1='172.81' x2='51.84' y2='172.81' style='stroke-width: 0.75;' />
+<line x1='59.04' y1='136.52' x2='51.84' y2='136.52' style='stroke-width: 0.75;' />
+<line x1='59.04' y1='100.23' x2='51.84' y2='100.23' style='stroke-width: 0.75;' />
+<line x1='59.04' y1='63.93' x2='51.84' y2='63.93' style='stroke-width: 0.75;' />
+<text transform='translate(41.76,209.11) rotate(-90)' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='10.67px' lengthAdjust='spacingAndGlyphs'>-2</text>
+<text transform='translate(41.76,172.81) rotate(-90)' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='10.67px' lengthAdjust='spacingAndGlyphs'>-1</text>
+<text transform='translate(41.76,136.52) rotate(-90)' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='6.67px' lengthAdjust='spacingAndGlyphs'>0</text>
+<text transform='translate(41.76,100.23) rotate(-90)' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='6.67px' lengthAdjust='spacingAndGlyphs'>1</text>
+<text transform='translate(41.76,63.93) rotate(-90)' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='6.67px' lengthAdjust='spacingAndGlyphs'>2</text>
+<polygon points='59.04,214.56 545.76,214.56 545.76,59.04 59.04,59.04 ' style='stroke-width: 0.75;' />
+<text x='302.40' y='269.28' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='50.03px' lengthAdjust='spacingAndGlyphs'>Leverage</text>
+<text transform='translate(12.96,136.80) rotate(-90)' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='122.06px' lengthAdjust='spacingAndGlyphs'>Standardized residuals</text>
+</g>
+<g clip-path='url(#cpNTkuMDR8NTQ1Ljc2fDU5LjA0fDIxNC41Ng==)'>
+<circle cx='210.56' cy='110.38' r='2.70' style='stroke-width: 0.75;' />
+<circle cx='218.16' cy='174.06' r='2.70' style='stroke-width: 0.75;' />
+<circle cx='453.71' cy='74.73' r='2.70' style='stroke-width: 0.75;' />
+<circle cx='509.30' cy='92.92' r='2.70' style='stroke-width: 0.75;' />
+<circle cx='257.42' cy='123.92' r='2.70' style='stroke-width: 0.75;' />
+<circle cx='527.73' cy='172.87' r='2.70' style='stroke-width: 0.75;' />
+<circle cx='354.73' cy='198.87' r='2.70' style='stroke-width: 0.75;' />
+<circle cx='521.58' cy='118.94' r='2.70' style='stroke-width: 0.75;' />
+<circle cx='342.14' cy='150.97' r='2.70' style='stroke-width: 0.75;' />
+<circle cx='347.57' cy='140.37' r='2.70' style='stroke-width: 0.75;' />
+<polyline points='210.56,137.98 218.16,136.80 257.42,131.96 342.14,156.70 347.57,154.32 354.73,149.06 453.71,73.88 509.30,119.87 521.58,131.53 527.73,137.45 ' style='stroke-width: 0.75; stroke: #DF536B;' />
+<line x1='59.04' y1='136.52' x2='545.76' y2='136.52' style='stroke-width: 0.75; stroke: #BEBEBE; stroke-dasharray: 1.00,3.00;' />
+<line x1='77.07' y1='214.56' x2='77.07' y2='59.04' style='stroke-width: 0.75; stroke: #BEBEBE; stroke-dasharray: 1.00,3.00;' />
+</g>
+<g clip-path='url(#cpMC4wMHw1NzYuMDB8MC4wMHwyODguMDA=)'>
+<text x='302.40' y='283.68' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='403.58px' lengthAdjust='spacingAndGlyphs'>(function (formula, data, subset, weights, na.action, method = "qr", model  ...</text>
+</g>
+<g clip-path='url(#cpNTkuMDR8NTQ1Ljc2fDU5LjA0fDIxNC41Ng==)'>
+<polyline points='81.57,-521.05 86.22,-323.91 90.86,-237.61 95.50,-186.32 100.14,-151.34 104.78,-125.50 109.42,-105.39 114.07,-89.16 118.71,-75.69 123.35,-64.28 127.99,-54.44 132.63,-45.83 137.28,-38.23 141.92,-31.44 146.56,-25.32 151.20,-19.78 155.84,-14.72 160.49,-10.08 165.13,-5.80 169.77,-1.83 174.41,1.86 179.05,5.30 183.69,8.52 188.34,11.55 192.98,14.40 197.62,17.09 202.26,19.64 206.90,22.06 211.55,24.36 216.19,26.54 220.83,28.63 225.47,30.62 230.11,32.53 234.75,34.35 239.40,36.10 244.04,37.79 248.68,39.41 253.32,40.97 257.96,42.47 262.61,43.92 267.25,45.32 271.89,46.68 276.53,47.99 281.17,49.26 285.82,50.49 290.46,51.68 295.10,52.84 299.74,53.96 304.38,55.06 309.02,56.12 313.67,57.16 318.31,58.17 322.95,59.15 327.59,60.11 332.23,61.05 336.88,61.96 341.52,62.85 346.16,63.73 350.80,64.58 355.44,65.41 360.09,66.23 364.73,67.03 369.37,67.81 374.01,68.57 378.65,69.33 383.29,70.06 387.94,70.78 392.58,71.49 397.22,72.19 401.86,72.87 406.50,73.54 411.15,74.20 415.79,74.85 420.43,75.48 425.07,76.11 429.71,76.73 434.36,77.33 439.00,77.93 443.64,78.52 448.28,79.10 452.92,79.67 457.56,80.23 462.21,80.78 466.85,81.33 471.49,81.86 476.13,82.39 480.77,82.92 485.42,83.43 490.06,83.94 494.70,84.45 499.34,84.95 503.98,85.44 508.63,85.92 513.27,86.40 517.91,86.87 522.55,87.34 527.19,87.81 531.83,88.26 536.48,88.72 541.12,89.16 545.76,89.61 ' style='stroke-width: 0.75; stroke: #9E9E9E; stroke-dasharray: 4.00,4.00;' />
+<polyline points='81.57,794.08 86.22,596.95 90.86,510.65 95.50,459.36 100.14,424.38 104.78,398.54 109.42,378.43 114.07,362.20 118.71,348.73 123.35,337.32 127.99,327.47 132.63,318.87 137.28,311.27 141.92,304.48 146.56,298.36 151.20,292.82 155.84,287.76 160.49,283.12 165.13,278.84 169.77,274.87 174.41,271.18 179.05,267.74 183.69,264.52 188.34,261.49 192.98,258.64 197.62,255.94 202.26,253.40 206.90,250.98 211.55,248.68 216.19,246.50 220.83,244.41 225.47,242.42 230.11,240.51 234.75,238.69 239.40,236.93 244.04,235.25 248.68,233.63 253.32,232.07 257.96,230.57 262.61,229.12 267.25,227.72 271.89,226.36 276.53,225.05 281.17,223.78 285.82,222.55 290.46,221.36 295.10,220.20 299.74,219.07 304.38,217.98 309.02,216.91 313.67,215.88 318.31,214.87 322.95,213.89 327.59,212.93 332.23,211.99 336.88,211.08 341.52,210.18 346.16,209.31 350.80,208.46 355.44,207.63 360.09,206.81 364.73,206.01 369.37,205.23 374.01,204.46 378.65,203.71 383.29,202.98 387.94,202.26 392.58,201.55 397.22,200.85 401.86,200.17 406.50,199.50 411.15,198.84 415.79,198.19 420.43,197.55 425.07,196.93 429.71,196.31 434.36,195.71 439.00,195.11 443.64,194.52 448.28,193.94 452.92,193.37 457.56,192.81 462.21,192.26 466.85,191.71 471.49,191.18 476.13,190.64 480.77,190.12 485.42,189.60 490.06,189.09 494.70,188.59 499.34,188.09 503.98,187.60 508.63,187.12 513.27,186.64 517.91,186.16 522.55,185.70 527.19,185.23 531.83,184.78 536.48,184.32 541.12,183.88 545.76,183.43 ' style='stroke-width: 0.75; stroke: #9E9E9E; stroke-dasharray: 4.00,4.00;' />
+<polyline points='81.57,-793.42 86.22,-514.63 90.86,-392.58 95.50,-320.05 100.14,-270.57 104.78,-234.03 109.42,-205.59 114.07,-182.64 118.71,-163.59 123.35,-147.45 127.99,-133.53 132.63,-121.37 137.28,-110.61 141.92,-101.01 146.56,-92.36 151.20,-84.52 155.84,-77.37 160.49,-70.80 165.13,-64.75 169.77,-59.14 174.41,-53.92 179.05,-49.05 183.69,-44.49 188.34,-40.21 192.98,-36.18 197.62,-32.37 202.26,-28.77 206.90,-25.35 211.55,-22.10 216.19,-19.01 220.83,-16.06 225.47,-13.25 230.11,-10.55 234.75,-7.97 239.40,-5.49 244.04,-3.11 248.68,-0.82 253.32,1.39 257.96,3.51 262.61,5.56 267.25,7.54 271.89,9.46 276.53,11.31 281.17,13.11 285.82,14.85 290.46,16.54 295.10,18.18 299.74,19.77 304.38,21.32 309.02,22.82 313.67,24.29 318.31,25.72 322.95,27.11 327.59,28.46 332.23,29.79 336.88,31.08 341.52,32.34 346.16,33.57 350.80,34.78 355.44,35.96 360.09,37.11 364.73,38.24 369.37,39.35 374.01,40.43 378.65,41.49 383.29,42.53 387.94,43.56 392.58,44.56 397.22,45.54 401.86,46.51 406.50,47.45 411.15,48.39 415.79,49.30 420.43,50.20 425.07,51.09 429.71,51.96 434.36,52.82 439.00,53.66 443.64,54.49 448.28,55.31 452.92,56.12 457.56,56.91 462.21,57.69 466.85,58.46 471.49,59.22 476.13,59.98 480.77,60.72 485.42,61.45 490.06,62.17 494.70,62.88 499.34,63.58 503.98,64.28 508.63,64.96 513.27,65.64 517.91,66.31 522.55,66.97 527.19,67.63 531.83,68.27 536.48,68.91 541.12,69.55 545.76,70.18 ' style='stroke-width: 0.75; stroke: #9E9E9E; stroke-dasharray: 4.00,4.00;' />
+<polyline points='81.57,1066.46 86.22,787.67 90.86,665.62 95.50,593.09 100.14,543.61 104.78,507.07 109.42,478.63 114.07,455.68 118.71,436.63 123.35,420.49 127.99,406.57 132.63,394.41 137.28,383.65 141.92,374.05 146.56,365.40 151.20,357.56 155.84,350.41 160.49,343.84 165.13,337.78 169.77,332.18 174.41,326.96 179.05,322.09 183.69,317.53 188.34,313.25 192.98,309.22 197.62,305.41 202.26,301.81 206.90,298.39 211.55,295.14 216.19,292.05 220.83,289.10 225.47,286.28 230.11,283.59 234.75,281.01 239.40,278.53 244.04,276.15 248.68,273.86 253.32,271.65 257.96,269.53 262.61,267.48 267.25,265.49 271.89,263.58 276.53,261.72 281.17,259.93 285.82,258.19 290.46,256.50 295.10,254.86 299.74,253.27 304.38,251.72 309.02,250.22 313.67,248.75 318.31,247.32 322.95,245.93 327.59,244.57 332.23,243.25 336.88,241.96 341.52,240.70 346.16,239.46 350.80,238.26 355.44,237.08 360.09,235.93 364.73,234.80 369.37,233.69 374.01,232.61 378.65,231.55 383.29,230.50 387.94,229.48 392.58,228.48 397.22,227.50 401.86,226.53 406.50,225.58 411.15,224.65 415.79,223.74 420.43,222.84 425.07,221.95 429.71,221.08 434.36,220.22 439.00,219.38 443.64,218.55 448.28,217.73 452.92,216.92 457.56,216.13 462.21,215.35 466.85,214.58 471.49,213.81 476.13,213.06 480.77,212.32 485.42,211.59 490.06,210.87 494.70,210.16 499.34,209.46 503.98,208.76 508.63,208.08 513.27,207.40 517.91,206.73 522.55,206.07 527.19,205.41 531.83,204.76 536.48,204.12 541.12,203.49 545.76,202.86 ' style='stroke-width: 0.75; stroke: #9E9E9E; stroke-dasharray: 4.00,4.00;' />
+<line x1='69.84' y1='206.46' x2='91.44' y2='206.46' style='stroke-width: 0.75; stroke: #9E9E9E; stroke-dasharray: 4.00,4.00;' />
+<text x='94.14' y='210.76' style='font-size: 12.00px;fill: #9E9E9E; font-family: "Arial";' textLength='84.33px' lengthAdjust='spacingAndGlyphs'>Cook's distance</text>
+</g>
+<g clip-path='url(#cpMC4wMHw1NzYuMDB8MC4wMHwyODguMDA=)'>
+<line x1='545.76' y1='202.86' x2='545.76' y2='70.18' style='stroke-width: 0.75;' />
+<line x1='545.76' y1='202.86' x2='545.76' y2='202.86' style='stroke-width: 0.75;' />
+<line x1='545.76' y1='183.43' x2='545.76' y2='183.43' style='stroke-width: 0.75;' />
+<line x1='545.76' y1='89.61' x2='545.76' y2='89.61' style='stroke-width: 0.75;' />
+<line x1='545.76' y1='70.18' x2='545.76' y2='70.18' style='stroke-width: 0.75;' />
+<text x='549.36' y='206.09' style='font-size: 9.00px;fill: #9E9E9E; font-family: "Arial";' textLength='5.00px' lengthAdjust='spacingAndGlyphs'>1</text>
+<text x='549.36' y='186.65' style='font-size: 9.00px;fill: #9E9E9E; font-family: "Arial";' textLength='12.50px' lengthAdjust='spacingAndGlyphs'>0.5</text>
+<text x='549.36' y='92.83' style='font-size: 9.00px;fill: #9E9E9E; font-family: "Arial";' textLength='12.50px' lengthAdjust='spacingAndGlyphs'>0.5</text>
+<text x='549.36' y='73.40' style='font-size: 9.00px;fill: #9E9E9E; font-family: "Arial";' textLength='5.00px' lengthAdjust='spacingAndGlyphs'>1</text>
+<text x='302.40' y='52.56' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='121.39px' lengthAdjust='spacingAndGlyphs'>Residuals vs Leverage</text>
+<text x='450.11' y='76.88' text-anchor='end' style='font-size: 9.00px; font-family: "Arial";' textLength='5.00px' lengthAdjust='spacingAndGlyphs'>3</text>
+<text x='351.13' y='203.88' text-anchor='end' style='font-size: 9.00px; font-family: "Arial";' textLength='5.00px' lengthAdjust='spacingAndGlyphs'>7</text>
+<text x='505.70' y='95.07' text-anchor='end' style='font-size: 9.00px; font-family: "Arial";' textLength='5.00px' lengthAdjust='spacingAndGlyphs'>4</text>
+</g>
+</g>
+</svg>
+
+<p>That's it - while simple, we hope this example illustrate
+how you would go about to use any existing R statistical package.
+While the details would differ, the general approach would
+remain the same. Happy modelling!</p>
+
+        <div popover class="fsdocs-tip" id="fs1">namespace RProvider</div>
+<div popover class="fsdocs-tip" id="fs2">module Operators
+
+from RProvider<br /><em>&lt;summary&gt;
+ Custom operators that make composing and working with
+ R symbolic expressions easier.
+&lt;/summary&gt;</em></div>
+<div popover class="fsdocs-tip" id="fs3">namespace RProvider.graphics</div>
+<div popover class="fsdocs-tip" id="fs4">namespace RProvider.stats</div>
+<div popover class="fsdocs-tip" id="fs5">val rng: System.Random</div>
+<div popover class="fsdocs-tip" id="fs6">namespace System</div>
+<div popover class="fsdocs-tip" id="fs7">Multiple items<br />type Random =
+  new: unit -&gt; unit + 1 overload
+  member GetHexString: stringLength: int * ?lowercase: bool -&gt; string + 1 overload
+  member GetItems&lt;&#39;T&gt; : choices: ReadOnlySpan&lt;&#39;T&gt; * length: int -&gt; &#39;T array + 2 overloads
+  member GetString: choices: ReadOnlySpan&lt;char&gt; * length: int -&gt; string
+  member Next: unit -&gt; int + 2 overloads
+  member NextBytes: buffer: byte array -&gt; unit + 1 overload
+  member NextDouble: unit -&gt; float
+  member NextInt64: unit -&gt; int64 + 2 overloads
+  member NextSingle: unit -&gt; float32
+  member Shuffle&lt;&#39;T&gt; : values: Span&lt;&#39;T&gt; -&gt; unit + 1 overload
+  ...<br /><em>&lt;summary&gt;Represents a pseudo-random number generator, which is an algorithm that produces a sequence of numbers that meet certain statistical requirements for randomness.&lt;/summary&gt;</em><br /><br />--------------------<br />System.Random() : System.Random<br />System.Random(Seed: int) : System.Random</div>
+<div popover class="fsdocs-tip" id="fs8">val rand: unit -&gt; float</div>
+<div popover class="fsdocs-tip" id="fs9">System.Random.NextDouble() : float</div>
+<div popover class="fsdocs-tip" id="fs10">val X1s: float list</div>
+<div popover class="fsdocs-tip" id="fs11">val i: int</div>
+<div popover class="fsdocs-tip" id="fs12">val X2s: float list</div>
+<div popover class="fsdocs-tip" id="fs13">val Ys: float list</div>
+<div popover class="fsdocs-tip" id="fs14">val dataset: Abstractions.RExpr</div>
+<div popover class="fsdocs-tip" id="fs15">type R =
+  static member ``!`` : ?paramArray: obj array -&gt; RExpr + 2 overloads
+  static member ``!=`` : ?paramArray: obj array -&gt; RExpr + 2 overloads
+  static member ``!_hexmode`` : ?a: obj -&gt; RExpr + 2 overloads
+  static member ``!_octmode`` : ?a: obj -&gt; RExpr + 2 overloads
+  static member ``$`` : ?paramArray: obj array -&gt; RExpr + 2 overloads
+  static member ``$&lt;-`` : ?paramArray: obj array -&gt; RExpr + 2 overloads
+  static member ``$&lt;-_POSIXlt`` : ?x: obj * ?name: obj * ?value: obj -&gt; RExpr + 2 overloads
+  static member ``$&lt;-_data_frame`` : ?x: obj * ?name: obj * ?value: obj -&gt; RExpr + 2 overloads
+  static member ``$_DLLInfo`` : ?x: obj * ?name: obj -&gt; RExpr + 2 overloads
+  static member ``$_package__version`` : ?x: obj * ?name: obj -&gt; RExpr + 2 overloads
+  ...<br /><em>Base R functions.</em></div>
+<div popover class="fsdocs-tip" id="fs16">R.data_frame(paramsByName: List&lt;string * obj&gt;) : Abstractions.RExpr<br /><em>Data Frames</em><br />R.data_frame(paramsByName: System.Collections.Generic.IDictionary&lt;string,obj&gt;) : Abstractions.RExpr<br /><em>Data Frames</em><br />R.data_frame(?row_names: obj, ?check_rows: obj, ?check_names: obj, ?fix_empty_names: obj, ?stringsAsFactors: obj, ?paramArray: obj array) : Abstractions.RExpr<br /><em>Data Frames</em></div>
+<div popover class="fsdocs-tip" id="fs17">val result: Abstractions.RExpr</div>
+<div popover class="fsdocs-tip" id="fs18">type R =
+  static member AIC: ?object: obj * ?k: obj * ?paramArray: obj array -&gt; RExpr + 2 overloads
+  static member ARMAacf: ?ar: obj * ?ma: obj * ?lag_max: obj * ?pacf: obj -&gt; RExpr + 2 overloads
+  static member ARMAtoMA: ?ar: obj * ?ma: obj * ?lag_max: obj -&gt; RExpr + 2 overloads
+  static member BIC: ?object: obj * ?paramArray: obj array -&gt; RExpr + 2 overloads
+  static member Box_test: ?x: obj * ?lag: obj * ?``type`` : obj * ?fitdf: obj -&gt; RExpr + 2 overloads
+  static member C: ?object: obj * ?contr: obj * ?how_many: obj * ?paramArray: obj array -&gt; RExpr + 2 overloads
+  static member D: ?expr: obj * ?name: obj -&gt; RExpr + 2 overloads
+  static member DF2formula: ?x: obj * ?env: obj -&gt; RExpr + 2 overloads
+  static member Gamma: ?link: obj -&gt; RExpr + 2 overloads
+  static member HoltWinters: ?x: obj * ?alpha: obj * ?beta: obj * ?gamma: obj * ?seasonal: obj * ?start_periods: obj * ?l_start: obj * ?b_start: obj * ?s_start: obj * ?optim_start: obj * ?optim_control: obj -&gt; RExpr + 2 overloads
+  ...<br /><em>R statistical functions.</em></div>
+<div popover class="fsdocs-tip" id="fs19">R.lm(paramsByName: List&lt;string * obj&gt;) : Abstractions.RExpr<br /><em>Fitting Linear Models</em><br />R.lm(paramsByName: System.Collections.Generic.IDictionary&lt;string,obj&gt;) : Abstractions.RExpr<br /><em>Fitting Linear Models</em><br />R.lm(?formula: obj, ?data: obj, ?subset: obj, ?weights: obj, ?na_action: obj, ?method: obj, ?model: obj, ?x: obj, ?y: obj, ?qr: obj, ?singular_ok: obj, ?contrasts: obj, ?offset: obj, ?paramArray: obj array) : Abstractions.RExpr<br /><em>Fitting Linear Models</em></div>
+<div popover class="fsdocs-tip" id="fs20">val coefficients: Runtime.RTypes.Real.Vector.RRealVector&lt;1&gt;</div>
+<div popover class="fsdocs-tip" id="fs21">val residuals: Runtime.RTypes.Real.Vector.RRealVector&lt;1&gt;</div>
+<div popover class="fsdocs-tip" id="fs22">val summary: Abstractions.RExpr</div>
+<div popover class="fsdocs-tip" id="fs23">R.summary(paramsByName: List&lt;string * obj&gt;) : Abstractions.RExpr<br /><em>Object Summaries</em><br />R.summary(paramsByName: System.Collections.Generic.IDictionary&lt;string,obj&gt;) : Abstractions.RExpr<br /><em>Object Summaries</em><br />R.summary(?object: obj, ?paramArray: obj array) : Abstractions.RExpr<br /><em>Object Summaries</em></div>
+<div popover class="fsdocs-tip" id="fs24">module Graphics
+
+from RProvider<br /><em>&lt;summary&gt;
+ Functions for working with R graphics
+&lt;/summary&gt;</em></div>
+<div popover class="fsdocs-tip" id="fs25">val svg: width: float -&gt; height: float -&gt; doPlot: (unit -&gt; Abstractions.RExpr) -&gt; string<br /><em>&lt;summary&gt;Capture the output of an R function that uses a graphics device into a string.&lt;/summary&gt;<br />&lt;param name=&quot;width&quot;&gt;Width of the SVG to generate&lt;/param&gt;<br />&lt;param name=&quot;height&quot;&gt;Height of the SVG to generate&lt;/param&gt;<br />&lt;param name=&quot;doPlot&quot;&gt;A function that has the side-effect of writing to an active R graphics device.&lt;/param&gt;<br />&lt;returns&gt;An SVG-formatted XML string.&lt;/returns&gt;</em></div>
+<div popover class="fsdocs-tip" id="fs26">R.plot(paramsByName: List&lt;string * obj&gt;) : Abstractions.RExpr<br /><em>Generic X-Y Plotting</em><br />R.plot(paramsByName: System.Collections.Generic.IDictionary&lt;string,obj&gt;) : Abstractions.RExpr<br /><em>Generic X-Y Plotting</em><br />R.plot(?x: obj, ?y: obj, ?paramArray: obj array) : Abstractions.RExpr<br /><em>Generic X-Y Plotting</em></div>
+
+    </div>
+</main>
+<aside id="fsdocs-page-menu">
+    <p id="on-this-page">On this page</p>
+    <ul>
+  <li class="level-1">
+    <a href="#Quickstart-Using-Statistical-Packages">
+      Quickstart: Using Statistical Packages
+    </a>
+  </li>
+  <li class="level-2">
+    <a href="#Example-Linear-Regression">
+      Example: Linear Regression
+    </a>
+  </li>
+  <li class="level-2">
+    <a href="#Extracting-Results-from-R-to-F">
+      Extracting Results from R to F#
+    </a>
+  </li>
+</ul>
+</aside>
+<dialog>
+    <input type="search" placeholder="Search docs" />
+    <div class="results">
+        <ul></ul>
+        <p class="empty">Type something to start searching.</p>
+    </div>
+</dialog>
+<script type="module" src="https://fslab.org/RProvider/content/fsdocs-tips.js"></script>
+<script type="module" src="https://fslab.org/RProvider/content/fsdocs-theme-toggle.js"></script>
+<script type="module" src="https://fslab.org/RProvider/content/fsdocs-details-toggle.js"></script>
+<script type="module" src="https://fslab.org/RProvider/content/fsdocs-theme.js"></script>
+<script type="module" src="https://fslab.org/RProvider/content/fsdocs-search.js"></script>
+<script type="module" src="https://fslab.org/RProvider/content/fsdocs-copy-button.js"></script>
+
+</body>
+</html>
