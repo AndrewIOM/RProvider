@@ -3,8 +3,10 @@ module ProviderTests
 open System
 open System.Globalization
 open RProvider
+open RProvider.Operators
+
 open RProvider.datasets
-open RProvider.Runtime.Helpers
+open RProvider.stats
 
 open Expecto
 
@@ -13,7 +15,7 @@ let printing =
     testList "Printing" [
 
         testCase "Printing of data frame returns string with frame data" <| fun _ ->
-            let df = namedParams [ "Test", box [| 1; 42; 2 |] ] |> R.data_frame
+            let df = [ "Test", box [| 1; 42; 2 |] ] |> R.data_frame
             Expect.stringContains (RExpr.printToString df) "42" ""
 
     ]
@@ -68,6 +70,20 @@ let locales =
             Expect.floatClose Accuracy.high x2 0.8414709848 ""
             Threading.Thread.CurrentThread.CurrentCulture <- systemLocale
 
+    ]
+
+[<Tests>]
+let functions =
+
+    testList "Function parameters" [
+
+        testCase "Can mix named and unnamed arguments" <| fun _ ->
+            let x = 10.
+            let summary = R.binom_test(x, 100.0, 0.5, alternative = "two.sided")            
+            let p = summary?``p.value``.FromR<float>()
+            Expect.floatClose Accuracy.high p 3.06329e-17 "p-value was not correct"
+            let n = summary?statistic.FromR<float>()
+            Expect.equal n 10. "number of tries not correct"
     ]
 
 
